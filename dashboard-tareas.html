@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard de Tareas - Zen Style</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>□</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --primary: #1a1a1a;
+            --secondary: #333;
+            --accent: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --bg: #fafafa;
+            --card: #fff;
+            --text: #1a1a1a;
+            --text2: #666;
+            --border: #e8e8e8;
+            --radius: 8px;
+        }
+        .dark {
+            --primary: #e0e0e0;
+            --secondary: #aaa;
+            --accent: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --bg: #0f0f0f;
+            --card: #161616;
+            --text: #eaeaea;
+            --text2: #b0b0b0;
+            --border: #2a2a2a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+        .container { width: 100%; padding: 8px; }
+        .header { background: var(--card); padding: 16px; border-radius: var(--radius); margin-bottom: 12px; text-align: center; border: 1px solid var(--border); }
+        h1 { font-size: 1.5rem; font-weight: 600; }
+        .subtitle { color: var(--text2); font-size: 0.9rem; }
+        .header-controls { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 8px; color: var(--text2); font-size: 0.85rem; }
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+        .stat { background: var(--card); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid var(--border); }
+        .stat-num { font-size: 1.5rem; font-weight: 600; }
+        .stat-label { font-size: 0.7rem; color: var(--text2); text-transform: uppercase; }
+        .kanban { background: var(--card); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid var(--border); }
+        .kanban h2 { font-size: 1.1rem; margin-bottom: 12px; }
+        .kanban-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .kanban-col { background: var(--bg); padding: 10px; border-radius: var(--radius); min-height: 150px; }
+        .kanban-col h3 { font-size: 0.9rem; margin-bottom: 10px; padding: 6px; background: var(--card); border-radius: 4px; }
+        .kanban-col.pending h3 { border-left: 3px solid var(--warning); }
+        .kanban-col.progress h3 { border-left: 3px solid var(--accent); }
+        .kanban-col.done h3 { border-left: 3px solid var(--success); }
+        .kanban-tasks { min-height: 100px; }
+        .kanban-item { background: var(--card); padding: 10px; margin-bottom: 8px; border-radius: 4px; cursor: grab; border: 1px solid var(--border); font-size: 0.9rem; }
+        .kanban-item:active { cursor: grabbing; }
+        .kanban-item-time { font-size: 0.8rem; color: var(--text2); display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .timer-btn { background: none; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; }
+        .add-kanban { background: transparent; border: 2px dashed var(--border); color: var(--text2); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; text-align: center; }
+        .add-kanban:hover { border-color: var(--text); color: var(--text); }
+        .notif { background: var(--card); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid var(--border); }
+        .notif h2 { font-size: 1.1rem; margin-bottom: 10px; }
+        .notif-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .notif-row:last-child { border: none; }
+        .toggle { width: 40px; height: 20px; background: var(--border); border-radius: 10px; cursor: pointer; position: relative; }
+        .toggle.active { background: var(--success); }
+        .toggle::after { content: ''; width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle.active::after { left: 22px; }
+        .calendar { background: var(--card); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid var(--border); }
+        .calendar h2 { font-size: 1.1rem; margin-bottom: 10px; }
+        .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .segmented button { background: var(--bg); color: var(--text); border: none; padding: 6px 10px; cursor: pointer; font-size: 0.85rem; }
+        .segmented button.active { background: var(--primary); color: #fff; }
+        .calendar-nav { display: flex; align-items: center; gap: 8px; }
+        .calendar-nav button { background: var(--primary); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day-header { text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text2); padding: 8px 0; }
+        .calendar-day { position: relative; aspect-ratio: 1; border: 1px solid var(--border); border-radius: 4px; padding: 4px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: flex-start; justify-content: flex-start; }
+        .calendar-day:hover { background: var(--bg); }
+        .calendar-day.today { background: var(--primary); color: #fff; }
+        .calendar-day.has { border-color: var(--accent); }
+        .calendar-day.other { opacity: 0.5; }
+        .cal-badge { position: absolute; top: 4px; right: 4px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+        .calendar-day-list { padding: 8px; border: 1px dashed var(--border); border-radius: 6px; }
+        .calendar-day-list div { font-size: 0.85rem; padding: 4px 0; border-bottom: 1px solid var(--border); }
+        .calendar-day-list div:last-child { border-bottom: none; }
+        .calendar.compact .calendar-day-header { padding: 6px 0; font-size: 0.7rem; }
+        .calendar.compact .calendar-day { padding: 3px; font-size: 0.75rem; }
+        .calendar.compact .cal-badge { min-width: 16px; height: 16px; border-radius: 8px; font-size: 0.7rem; }
+        .tasks { background: var(--card); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid var(--border); }
+        .tasks h2 { font-size: 1.1rem; margin-bottom: 10px; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+        .tab { padding: 6px 12px; border: 1px solid var(--border); background: var(--bg); border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .task-search { margin-bottom: 10px; }
+        .task-search input { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 4px; font-size: 1rem; background: var(--bg); color: var(--text); }
+        .task-list { max-height: 300px; overflow-y: auto; }
+        .task-item { background: var(--bg); padding: 12px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid var(--border); cursor: pointer; }
+        .task-item.alta { border-left-color: var(--accent); }
+        .task-item.media { border-left-color: var(--warning); }
+        .task-item.baja { border-left-color: var(--success); }
+        .task-item.completed { opacity: 0.5; }
+        .task-title { font-weight: 500; margin-bottom: 4px; }
+        .task-meta { font-size: 0.8rem; color: var(--text2); display: flex; gap: 12px; flex-wrap: wrap; }
+        .priority-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border); }
+        .priority-badge.alta { background: var(--accent); color: #fff; border-color: transparent; }
+        .priority-badge.media { background: var(--warning); color: #fff; border-color: transparent; }
+        .priority-badge.baja { background: var(--success); color: #fff; border-color: transparent; }
+        .data { background: var(--card); padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); }
+        .data h2 { font-size: 1.1rem; margin-bottom: 10px; }
+        .data-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        .data-btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #fff; }
+        .data-btn.export { background: var(--success); }
+        .data-btn.import { background: #3498db; }
+        .data-btn.clear { background: var(--accent); }
+        .fab { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background: var(--primary); color: #fff; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--card); padding: 20px; border-radius: var(--radius); width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .modal-title { font-size: 1.2rem; font-weight: 600; }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 4px; font-size: 1rem; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary); }
+        .prio-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .prio-btn { padding: 10px; border: 2px solid var(--border); background: var(--bg); border-radius: 4px; cursor: pointer; text-align: center; }
+        .prio-btn.selected { color: #fff; border-color: transparent; }
+        .prio-btn.alta.selected { background: var(--accent); }
+        .prio-btn.media.selected { background: var(--warning); }
+        .prio-btn.baja.selected { background: var(--success); }
+        .form-btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        .empty { text-align: center; padding: 30px; color: var(--text2); }
+        .notification { position: fixed; bottom: 20px; right: 20px; background: var(--primary); color: #fff; padding: 12px 20px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1001; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } .kanban-cols { grid-template-columns: 1fr; } }
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            h1 { font-size: 1.35rem; }
+            .stat { padding: 10px; }
+            .stat-num { font-size: 1.3rem; }
+            .kanban h2, .tasks h2, .calendar h2, .data h2 { font-size: 1rem; }
+            .tab { padding: 8px 12px; font-size: 0.9rem; }
+            .timer-btn { padding: 6px 10px; font-size: 0.85rem; }
+            .fab { width: 56px; height: 56px; font-size: 1.6rem; }
+            .modal-content { width: 95%; }
+            .task-list { max-height: 55vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>□ Dashboard de Tareas</h1>
+            <p class="subtitle">Organiza tu día con simplicidad</p>
+            <div class="header-controls">
+                <span>Modo Oscuro</span>
+                <div class="toggle" id="darkToggle" onclick="toggleDark(this)"></div>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat"><div class="stat-num" id="totalTasks">0</div><div class="stat-label">Total</div></div>
+            <div class="stat"><div class="stat-num" id="pendingTasks">0</div><div class="stat-label">Pendientes</div></div>
+            <div class="stat"><div class="stat-num" id="completedTasks">0</div><div class="stat-label">Completadas</div></div>
+            <div class="stat"><div class="stat-num" id="highPriorityTasks">0</div><div class="stat-label">Alta Prioridad</div></div>
+        </div>
+        
+        <div class="kanban">
+            <h2>□ Tareas del Día</h2>
+            <div class="kanban-cols">
+                <div class="kanban-col pending">
+                    <h3>⏳ Pendientes</h3>
+                    <div class="kanban-tasks" id="kanbanPending" ondrop="drop(event, 'pending')" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="kanban-col progress">
+                    <h3>▶ En Proceso</h3>
+                    <div class="kanban-tasks" id="kanbanProgress" ondrop="drop(event, 'progress')" ondragover="allowDrop(event)"></div>
+                </div>
+                <div class="kanban-col done">
+                    <h3>✔ Completadas</h3>
+                    <div class="kanban-tasks" id="kanbanDone" ondrop="drop(event, 'done')" ondragover="allowDrop(event)"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="notif">
+            <h2>◉ Recordatorios</h2>
+            <div class="notif-row"><span>Notificaciones</span><div class="toggle active" onclick="toggleNotif(this, 'notif')"></div></div>
+            <div class="notif-row"><span>Sonido</span><div class="toggle active" onclick="toggleNotif(this, 'sound')"></div></div>
+            <div class="notif-row"><span>Minutos antes</span><input type="number" value="5" min="1" max="60" id="notifMinutes" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px;"></div>
+        </div>
+        
+        <div class="calendar">
+            <h2>◐ Calendario</h2>
+            <div class="calendar-controls">
+                <div class="segmented">
+                    <button id="viewDayBtn" class="active" onclick="setCalendarView('day')">Día</button>
+                    <button id="viewWeekBtn" onclick="setCalendarView('week')">Semana</button>
+                    <button id="viewMonthBtn" onclick="setCalendarView('month')">Mes</button>
+                </div>
+                <div class="calendar-nav">
+                    <button onclick="prevPeriod()">◀</button>
+                    <span id="calendarLabel"></span>
+                    <button onclick="nextPeriod()">▶</button>
+                </div>
+                <div class="calendar-compact-toggle" style="display:flex;align-items:center;gap:8px;">
+                    <span>Compacto</span>
+                    <div class="toggle" id="compactToggle" onclick="toggleCalendarCompact(this)"></div>
+                </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        
+        <div class="tasks">
+            <h2>◑ Mis Tareas</h2>
+            <div class="tabs">
+                <div class="tab active" onclick="filterTasks('all', this)">□ Todas</div>
+                <div class="tab" onclick="filterTasks('pending', this)">⏳ Pendientes</div>
+                <div class="tab" onclick="filterTasks('completed', this)">✔ Completadas</div>
+                <div class="tab" onclick="filterTasks('today', this)">◐ Hoy</div>
+            </div>
+            <div class="task-search">
+                <input type="text" id="taskSearch" placeholder="Buscar por título..." oninput="searchTasks(this.value)">
+            </div>
+            <div class="task-list" id="taskList"></div>
+        </div>
+        
+        <div class="data">
+            <h2>◈ Gestión de Datos</h2>
+            <div class="data-btns">
+                <button class="data-btn export" onclick="exportData()">◣ Exportar</button>
+                <button class="data-btn import" onclick="document.getElementById('importFile').click()">◤ Importar</button>
+                <button class="data-btn clear" onclick="clearAllTasks()">○ Limpiar</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
+        </div>
+    </div>
+    
+    <button class="fab" onclick="openTaskModal()">+</button>
+    
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Nueva Tarea</span>
+                <button class="modal-close" onclick="closeTaskModal()">×</button>
+            </div>
+            <form onsubmit="handleTaskSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" id="taskTitle" class="form-input" placeholder="Ej: Terminar informe" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prioridad</label>
+                    <div class="prio-btns">
+                        <div class="prio-btn alta" onclick="selectPrio('alta', this)">● Alta</div>
+                        <div class="prio-btn media selected" onclick="selectPrio('media', this)">○ Media</div>
+                        <div class="prio-btn baja" onclick="selectPrio('baja', this)">◐ Baja</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Categoría</label>
+                    <select id="taskCategory" class="form-select">
+                        <option value="trabajo">◈ Trabajo</option>
+                        <option value="personal">◑ Personal</option>
+                        <option value="estudio">◓ Estudio</option>
+                        <option value="salud">◐ Salud</option>
+                        <option value="hogar">◉ Hogar</option>
+                        <option value="otro">○ Otro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fecha</label>
+                    <input type="date" id="taskDate" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora</label>
+                    <input type="time" id="taskTime" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea id="taskDesc" class="form-textarea" rows="3" placeholder="Detalles..."></textarea>
+                </div>
+                <button type="submit" class="form-btn" id="taskSubmitBtn">Agregar Tarea</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="modal" id="kanbanModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Tarea del Día</span>
+                <button class="modal-close" onclick="closeKanbanModal()">×</button>
+            </div>
+            <form onsubmit="handleKanbanSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" id="kanbanTitle" class="form-input" placeholder="Ej: Revisar correos" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tiempo estimado (minutos)</label>
+                    <input type="number" id="kanbanTime" class="form-input" value="30" min="1">
+                </div>
+                <button type="submit" class="form-btn" id="kanbanSubmitBtn">Agregar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        var tasks = [];
+        var kanbanTasks = [];
+        var currentFilter = 'all';
+        var selectedPrio = 'media';
+        var weekOffset = 0;
+        var activeTimers = {};
+        var notifSettings = { notif: true, sound: true, minutes: 5 };
+        var audioCtx = null;
+        var selectedDate = null;
+        var calendarView = 'day';
+        var calendarAnchorDate = new Date();
+        window.editingKanbanId = null;
+        window.editingTaskId = null;
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            renderAll();
+            // Limpiar datos corruptos si existen
+            if (tasks.length > 0 && typeof tasks[0].completed === 'undefined') {
+                tasks = [];
+                kanbanTasks = [];
+                saveData();
+            }
+            updateStats();
+            
+            // Event listeners para formularios
+            document.querySelector('#taskModal form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleTaskSubmit(e);
+            });
+            document.querySelector('#kanbanModal form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleKanbanSubmit(e);
+            });
+        });
+
+        // Cargar datos
+        function loadData() {
+            var t = localStorage.getItem('tasks');
+            var k = localStorage.getItem('kanbanTasks');
+            if (t) {
+                try {
+                    tasks = JSON.parse(t);
+                    // Validar que los datos sean correctos
+                    if (!Array.isArray(tasks)) tasks = [];
+                } catch(e) {
+                    tasks = [];
+                }
+            }
+            if (k) {
+                try {
+                    kanbanTasks = JSON.parse(k);
+                    if (!Array.isArray(kanbanTasks)) kanbanTasks = [];
+                } catch(e) {
+                    kanbanTasks = [];
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            localStorage.setItem('kanbanTasks', JSON.stringify(kanbanTasks));
+        }
+
+        // Renderizar todo
+        function renderAll() {
+            updateStats();
+            renderKanban();
+            renderCalendar();
+            renderTasks();
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            var total = tasks.length;
+            var completed = 0;
+            var pending = 0;
+            var highPrio = 0;
+            
+            for (var i = 0; i < tasks.length; i++) {
+                if (tasks[i].completed) {
+                    completed++;
+                } else {
+                    pending++;
+                    if (tasks[i].priority === 'alta') {
+                        highPrio++;
+                    }
+                }
+            }
+            
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('pendingTasks').textContent = pending;
+            document.getElementById('highPriorityTasks').textContent = highPrio;
+        }
+
+        // Kanban
+        function renderKanban() {
+            var pending = kanbanTasks.filter(function(t) { return t.status === 'pending'; });
+            var progress = kanbanTasks.filter(function(t) { return t.status === 'progress'; });
+            var done = kanbanTasks.filter(function(t) { return t.status === 'done'; });
+
+            var pendingHtml = '<div class="add-kanban" onclick="openKanbanModal()">+ Agregar</div>';
+            pendingHtml += pending.map(function(t) { return createKanbanItem(t); }).join('');
+            
+            document.getElementById('kanbanPending').innerHTML = pendingHtml;
+            document.getElementById('kanbanProgress').innerHTML = progress.map(function(t) { return createKanbanItem(t); }).join('');
+            document.getElementById('kanbanDone').innerHTML = done.map(function(t) { return createKanbanItem(t); }).join('');
+        }
+
+        function createKanbanItem(task) {
+            var timer = '';
+            if (task.status === 'progress') {
+                timer = '<div class="kanban-item-time">◐ <span id="timer-' + task.id + '">' + formatTime(task.actual) + '</span> ' +
+                    '<button class="timer-btn" onclick="toggleTimer(' + task.id + '); event.stopPropagation();">' + (activeTimers[task.id] ? '◐' : '▶') + '</button> ' +
+                    '<button class="timer-btn" onclick="resetTimer(' + task.id + '); event.stopPropagation();">○</button></div>';
+            }
+            var nextLabel = (task.status === 'pending' ? '▶' : (task.status === 'progress' ? '✔' : '⏳'));
+            return '<div class="kanban-item" draggable="true" ondragstart="drag(event, ' + task.id + ')" ondragend="dragEnd(event)" onclick="openEditKanbanModal(' + task.id + ')" ondblclick="openEditKanbanModal(' + task.id + ')">' +
+                '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+                '<div style="flex:1;">' +
+                '<div>' + task.title + '</div>' +
+                '<div class="kanban-item-time">◐ ' + task.estimated + 'min ' + timer + '</div>' +
+                '</div>' +
+                '<button class="timer-btn" onclick="nextKanbanStatus(' + task.id + '); event.stopPropagation();" title="Mover estado">' + nextLabel + '</button>' +
+                '<button class="timer-btn" onclick="deleteKanbanTask(' + task.id + '); event.stopPropagation();" style="margin-left:4px;">×</button>' +
+                '</div></div>';
+        }
+
+
+
+        
+
+        function openEditKanbanModal(id) {
+            var task = kanbanTasks.find(function(t) { return t.id === id; });
+            if (!task) return;
+            window.editingKanbanId = id;
+            document.getElementById('kanbanModal').querySelector('.modal-title').textContent = 'Editar Tarea';
+            document.getElementById('kanbanTitle').value = task.title;
+            document.getElementById('kanbanTime').value = task.estimated;
+            document.getElementById('kanbanSubmitBtn').textContent = 'Guardar';
+            document.getElementById('kanbanModal').classList.add('active');
+        }
+
+        function handleKanbanSubmit(e) {
+            e.preventDefault();
+            if (window.editingKanbanId !== null && window.editingKanbanId !== undefined) {
+                var task = kanbanTasks.find(function(t) { return t.id === window.editingKanbanId; });
+                if (task) {
+                    task.title = document.getElementById('kanbanTitle').value.trim();
+                    task.estimated = parseInt(document.getElementById('kanbanTime').value) || 30;
+                    saveData();
+                    renderKanban();
+                    showNotif('✓ Tarea actualizada');
+                }
+                window.editingKanbanId = null;
+            } else {
+                var title = document.getElementById('kanbanTitle').value.trim();
+                var time = parseInt(document.getElementById('kanbanTime').value) || 30;
+                if (title) {
+                    kanbanTasks.push({ id: Date.now(), title: title, estimated: time, actual: 0, status: 'pending' });
+                    saveData();
+                    renderKanban();
+                    showNotif('✓ Tarea agregada');
+                }
+            }
+            document.getElementById('kanbanModal').querySelector('.modal-title').textContent = 'Tarea del Día';
+            document.getElementById('kanbanSubmitBtn').textContent = 'Agregar';
+            document.getElementById('kanbanTitle').value = '';
+            document.getElementById('kanbanTime').value = '30';
+            document.getElementById('kanbanModal').classList.remove('active');
+        }
+
+
+
+        // Drag & Drop
+        function drag(e, id) {
+            e.dataTransfer.setData('text', id);
+            e.target.classList.add('dragging');
+        }
+        function dragEnd(e) { e.target.classList.remove('dragging'); }
+        function allowDrop(e) { e.preventDefault(); }
+        function drop(e, status) {
+            e.preventDefault();
+            var id = parseInt(e.dataTransfer.getData('text'));
+            var task = kanbanTasks.find(function(t) { return t.id === id; });
+            if (task) {
+                if (status === 'progress') resetTimer(id);
+                if (status === 'done' && activeTimers[id]) clearInterval(activeTimers[id]);
+                task.status = status;
+                saveData();
+                renderKanban();
+                if (status === 'done') showNotif('✔ Tarea completada');
+            }
+        }
+
+        // Timers
+        function formatTime(secs) {
+            var m = Math.floor(secs / 60);
+            var s = secs % 60;
+            return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function toggleTimer(id) {
+            var task = kanbanTasks.find(function(t) { return t.id === id; });
+            if (!task) return;
+            if (activeTimers[id]) {
+                clearInterval(activeTimers[id]);
+                delete activeTimers[id];
+            } else {
+                activeTimers[id] = setInterval(function() {
+                    task.actual++;
+                    var el = document.getElementById('timer-' + id);
+                    if (el) el.textContent = formatTime(task.actual);
+                    saveData();
+                    if (task.actual >= task.estimated * 60) {
+                        playAlert();
+                        showNotif('◐ Tiempo completado');
+                        clearInterval(activeTimers[id]);
+                        delete activeTimers[id];
+                    }
+                }, 1000);
+            }
+            renderKanban();
+        }
+
+        function resetTimer(id) {
+            var task = kanbanTasks.find(function(t) { return t.id === id; });
+            if (task) {
+                if (activeTimers[id]) clearInterval(activeTimers[id]);
+                delete activeTimers[id];
+                task.actual = 0;
+                saveData();
+                renderKanban();
+            }
+        }
+
+        // Calendario
+        function renderCalendar() {
+            if (calendarView === 'month') return renderMonthCalendar();
+            if (calendarView === 'week') return renderWeekCalendar();
+            return renderDayCalendar();
+        }
+        function setCalendarView(v) {
+            calendarView = v;
+            document.getElementById('viewDayBtn').classList.toggle('active', v === 'day');
+            document.getElementById('viewWeekBtn').classList.toggle('active', v === 'week');
+            document.getElementById('viewMonthBtn').classList.toggle('active', v === 'month');
+            renderCalendar();
+        }
+        function prevPeriod() {
+            if (calendarView === 'day') calendarAnchorDate.setDate(calendarAnchorDate.getDate() - 1);
+            else if (calendarView === 'week') calendarAnchorDate.setDate(calendarAnchorDate.getDate() - 7);
+            else if (calendarView === 'month') calendarAnchorDate.setMonth(calendarAnchorDate.getMonth() - 1);
+            renderCalendar();
+        }
+        function nextPeriod() {
+            if (calendarView === 'day') calendarAnchorDate.setDate(calendarAnchorDate.getDate() + 1);
+            else if (calendarView === 'week') calendarAnchorDate.setDate(calendarAnchorDate.getDate() + 7);
+            else if (calendarView === 'month') calendarAnchorDate.setMonth(calendarAnchorDate.getMonth() + 1);
+            renderCalendar();
+        }
+        function renderWeekCalendar() {
+            var days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+            var today = new Date();
+            var weekStart = new Date(calendarAnchorDate);
+            weekStart.setDate(calendarAnchorDate.getDate() - weekStart.getDay());
+            var startStr = weekStart.toLocaleDateString('es', {month:'short',day:'numeric'});
+            var endDate = new Date(weekStart.getTime() + 6*86400000);
+            var endStr = endDate.toLocaleDateString('es', {month:'short',day:'numeric'});
+            document.getElementById('calendarLabel').textContent = startStr + ' - ' + endStr;
+            var html = '';
+            for (var i = 0; i < 7; i++) html += '<div class="calendar-day-header">' + days[i] + '</div>';
+            for (var i = 0; i < 7; i++) {
+                var d = new Date(weekStart);
+                d.setDate(weekStart.getDate() + i);
+                var dStr = d.toISOString().split('T')[0];
+                var pending = tasks.filter(function(t) { return t.date === dStr && !t.completed; }).length;
+                var isToday = d.toDateString() === today.toDateString();
+                html += '<div class="calendar-day ' + (isToday ? 'today' : '') + ' ' + (pending ? 'has' : '') + '" onclick="filterByDate(\'' + dStr + '\')">' + d.getDate() + (pending ? '<span class="cal-badge">' + pending + '</span>' : '') + '</div>';
+            }
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+        function renderMonthCalendar() {
+            var days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+            var today = new Date();
+            var firstOfMonth = new Date(calendarAnchorDate.getFullYear(), calendarAnchorDate.getMonth(), 1);
+            var label = firstOfMonth.toLocaleDateString('es', {month:'long', year:'numeric'});
+            document.getElementById('calendarLabel').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            var start = new Date(firstOfMonth);
+            start.setDate(1 - start.getDay());
+            var html = '';
+            for (var i = 0; i < 7; i++) html += '<div class="calendar-day-header">' + days[i] + '</div>';
+            for (var i = 0; i < 42; i++) {
+                var d = new Date(start);
+                d.setDate(start.getDate() + i);
+                var dStr = d.toISOString().split('T')[0];
+                var pending = tasks.filter(function(t) { return t.date === dStr && !t.completed; }).length;
+                var isToday = d.toDateString() === today.toDateString();
+                var isOther = d.getMonth() !== calendarAnchorDate.getMonth();
+                html += '<div class="calendar-day ' + (isToday ? 'today' : '') + ' ' + (pending ? 'has' : '') + ' ' + (isOther ? 'other' : '') + '" onclick="filterByDate(\'' + dStr + '\')">' + d.getDate() + (pending ? '<span class="cal-badge">' + pending + '</span>' : '') + '</div>';
+            }
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+        function renderDayCalendar() {
+            var d = new Date(calendarAnchorDate);
+            var dStr = d.toISOString().split('T')[0];
+            var label = d.toLocaleDateString('es', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+            document.getElementById('calendarLabel').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            var dayTasks = tasks.filter(function(t) { return t.date === dStr; });
+            var html = '<div class="calendar-day-list">';
+            if (dayTasks.length === 0) {
+                html += '<div>○ No hay tareas para este día</div>';
+            } else {
+                for (var i = 0; i < dayTasks.length; i++) {
+                    var t = dayTasks[i];
+                    html += '<div>' + (t.time ? ('[' + t.time + '] ') : '') + t.title + '</div>';
+                }
+            }
+            html += '</div>';
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        // Tareas
+        var searchQuery = '';
+        function renderTasks() {
+            var filtered = tasks;
+            if (currentFilter === 'pending') filtered = tasks.filter(function(t) { return !t.completed; });
+            else if (currentFilter === 'completed') filtered = tasks.filter(function(t) { return t.completed; });
+            else if (currentFilter === 'today') {
+                var today = new Date().toISOString().split('T')[0];
+                filtered = tasks.filter(function(t) { return t.date === today; });
+            }
+            else if (currentFilter === 'date' && selectedDate) {
+                filtered = tasks.filter(function(t) { return t.date === selectedDate; });
+            }
+            if (searchQuery) {
+                var q = searchQuery.toLowerCase();
+                filtered = filtered.filter(function(t) { return (t.title || '').toLowerCase().includes(q); });
+            }
+            
+            if (filtered.length === 0) {
+                document.getElementById('taskList').innerHTML = '<div class="empty">○ No hay tareas</div>';
+                return;
+            }
+            
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var t = filtered[i];
+                var prioLabel = t.priority === 'alta' ? 'ALTA' : (t.priority === 'media' ? 'MEDIA' : 'BAJA');
+                var meta = '<span class="priority-badge ' + t.priority + '">' + prioLabel + '</span> ' +
+                    '<span>' + getCatIcon(t.category) + ' ' + t.category + '</span>';
+                if (t.date) meta += '<span>◐ ' + formatDate(t.date) + '</span>';
+                html += '<div class="task-item ' + t.priority + ' ' + (t.completed ? 'completed' : '') + '">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+                    '<div onclick="toggleTask(' + t.id + ')" style="flex:1;cursor:pointer;">' +
+                    '<div class="task-title">' + t.title + '</div>' +
+                    '<div class="task-meta">' + meta + '</div>' +
+                    (t.desc ? '<div class="task-meta" style="margin-top:4px">' + t.desc + '</div>' : '') +
+                    '</div>' +
+                    '<div onclick="event.stopPropagation();" style="display:flex;gap:4px;">' +
+                    '<button class="timer-btn" onclick="editTask(' + t.id + ')">○</button>' +
+                    '<button class="timer-btn" onclick="deleteTask(' + t.id + ')">×</button>' +
+                    '</div></div></div>';
+            }
+            document.getElementById('taskList').innerHTML = html;
+        }
+
+        function formatDate(d) {
+            var date = new Date(d);
+            var today = new Date();
+            var tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            if (date.toDateString() === today.toDateString()) return 'Hoy';
+            if (date.toDateString() === tomorrow.toDateString()) return 'Mañana';
+            return date.toLocaleDateString('es', {day:'numeric',month:'short'});
+        }
+
+        function getCatIcon(c) {
+            var icons = {trabajo:'◈',personal:'◑',estudio:'◓',salud:'◐',hogar:'◉',otro:'○'};
+            return icons[c] || '○';
+        }
+
+        function filterTasks(filter, el) {
+            currentFilter = filter;
+            var tabs = document.querySelectorAll('.tabs .tab');
+            for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+            el.classList.add('active');
+            renderTasks();
+        }
+
+        function filterByDate(d) {
+            currentFilter = 'date';
+            selectedDate = d;
+            var tabs = document.querySelectorAll('.tabs .tab');
+            for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+            tabs[3].classList.add('active');
+            renderTasks();
+        }
+        function searchTasks(q) {
+            searchQuery = q || '';
+            renderTasks();
+        }
+
+        function addTask(e) {
+            e.preventDefault();
+            var task = {
+                id: Date.now(),
+                title: document.getElementById('taskTitle').value.trim(),
+                priority: selectedPrio,
+                category: document.getElementById('taskCategory').value,
+                date: document.getElementById('taskDate').value,
+                time: document.getElementById('taskTime').value,
+                desc: document.getElementById('taskDesc').value.trim(),
+                completed: false
+            };
+            tasks.unshift(task);
+            saveData();
+            renderAll();
+            closeTaskModal();
+            showNotif('✓ Tarea agregada');
+        }
+
+        function handleTaskSubmit(e) {
+            e.preventDefault();
+            console.log('editingTaskId:', window.editingTaskId);
+            if (window.editingTaskId !== null && window.editingTaskId !== undefined) {
+                var task = tasks.find(function(t) { return t.id === window.editingTaskId; });
+                if (task) {
+                    task.title = document.getElementById('taskTitle').value.trim();
+                    task.priority = selectedPrio;
+                    task.category = document.getElementById('taskCategory').value;
+                    task.date = document.getElementById('taskDate').value;
+                    task.time = document.getElementById('taskTime').value;
+                    task.desc = document.getElementById('taskDesc').value.trim();
+                    saveData();
+                    renderAll();
+                    showNotif('✓ Tarea actualizada');
+                }
+                window.editingTaskId = null;
+            } else {
+                addTask(e);
+            }
+        }
+
+        function editTask(id) {
+            var task = tasks.find(function(t) { return t.id === id; });
+            if (!task) return;
+            window.editingTaskId = id;
+            document.getElementById('taskModal').querySelector('.modal-title').textContent = 'Editar Tarea';
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskCategory').value = task.category;
+            document.getElementById('taskDate').value = task.date || '';
+            document.getElementById('taskTime').value = task.time || '';
+            document.getElementById('taskDesc').value = task.desc || '';
+            selectedPrio = task.priority;
+            var btns = document.querySelectorAll('.prio-btn');
+            for (var i = 0; i < btns.length; i++) {
+                btns[i].classList.remove('selected');
+                if (btns[i].classList.contains(task.priority)) {
+                    btns[i].classList.add('selected');
+                }
+            }
+            document.getElementById('taskSubmitBtn').textContent = 'Guardar Cambios';
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        function toggleTask(id) {
+            var task = tasks.find(function(t) { return t.id === id; });
+            if (task) {
+                task.completed = !task.completed;
+                saveData();
+                renderAll();
+            }
+        }
+
+        function deleteTask(id) {
+            if (!confirm('¿Eliminar esta tarea?')) return;
+            tasks = tasks.filter(function(t) { return t.id !== id; });
+            saveData();
+            renderAll();
+            showNotif('✓ Tarea eliminada');
+        }
+
+        function deleteKanbanTask(id) {
+            if (!confirm('¿Eliminar esta tarea?')) return;
+            if (activeTimers[id]) clearInterval(activeTimers[id]);
+            delete activeTimers[id];
+            kanbanTasks = kanbanTasks.filter(function(t) { return t.id !== id; });
+            saveData();
+            renderKanban();
+            showNotif('✓ Tarea eliminada');
+        }
+
+        // Modales
+        function openTaskModal() {
+            document.getElementById('taskModal').querySelector('.modal-title').textContent = 'Nueva Tarea';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDate').value = '';
+            document.getElementById('taskTime').value = '';
+            document.getElementById('taskDesc').value = '';
+            selectPrio('media', document.querySelectorAll('.prio-btn')[1]);
+            document.getElementById('taskModal').classList.add('active');
+            initAudio();
+            requestNotif();
+        }
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+            window.editingTaskId = null;
+            document.getElementById('taskModal').querySelector('.modal-title').textContent = 'Nueva Tarea';
+            document.getElementById('taskSubmitBtn').textContent = 'Agregar Tarea';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDate').value = '';
+            document.getElementById('taskTime').value = '';
+            document.getElementById('taskDesc').value = '';
+            selectPrio('media', document.querySelectorAll('.prio-btn')[1]);
+        }
+        function openKanbanModal() {
+            document.getElementById('kanbanModal').querySelector('.modal-title').textContent = 'Tarea del Día';
+            delete document.getElementById('kanbanModal').dataset.editId;
+            document.getElementById('kanbanTitle').value = '';
+            document.getElementById('kanbanTime').value = '30';
+            document.getElementById('kanbanModal').classList.add('active');
+        }
+        function closeKanbanModal() {
+            document.getElementById('kanbanModal').classList.remove('active');
+            delete document.getElementById('kanbanModal').dataset.editId;
+            document.getElementById('kanbanModal').querySelector('.modal-title').textContent = 'Tarea del Día';
+            document.getElementById('kanbanSubmitBtn').textContent = 'Agregar';
+            document.getElementById('kanbanTitle').value = '';
+            document.getElementById('kanbanTime').value = '30';
+        }
+        function selectPrio(p, el) {
+            selectedPrio = p;
+            var btns = document.querySelectorAll('.prio-btn');
+            for (var i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
+            el.classList.add('selected');
+        }
+
+        // Notificaciones y audio
+        function initAudio() {
+            if (!audioCtx) {
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+            }
+        }
+        function requestNotif() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        function playSound() {
+            if (!notifSettings.sound || !audioCtx) return;
+            try {
+                var osc = audioCtx.createOscillator();
+                var gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = 800;
+                gain.gain.value = 0.3;
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+        function playAlert() {
+            if (!notifSettings.sound || !audioCtx) return;
+            try {
+                var now = audioCtx.currentTime;
+                var sequence = [
+                    {f: 900, d: 0.6, v: 0.5},
+                    {f: 700, d: 0.6, v: 0.5},
+                    {f: 1100, d: 0.8, v: 0.6}
+                ];
+                var start = now;
+                for (var i = 0; i < sequence.length; i++) {
+                    var step = sequence[i];
+                    var osc = audioCtx.createOscillator();
+                    var gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = step.f;
+                    gain.gain.value = step.v;
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(start);
+                    gain.gain.exponentialRampToValueAtTime(0.01, start + step.d);
+                    osc.stop(start + step.d);
+                    start += step.d + 0.05;
+                }
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200, 100, 300]);
+                }
+            } catch (e) {}
+        }
+        function toggleNotif(el, type) {
+            el.classList.toggle('active');
+            if (type === 'notif') notifSettings.notif = el.classList.contains('active');
+            if (type === 'sound') notifSettings.sound = el.classList.contains('active');
+        }
+        function toggleCalendarCompact(el) {
+            el.classList.toggle('active');
+            var cal = document.querySelector('.calendar');
+            if (cal) cal.classList.toggle('compact', el.classList.contains('active'));
+        }
+        function toggleDark(el) {
+            el.classList.toggle('active');
+            document.body.classList.toggle('dark', el.classList.contains('active'));
+        }
+        function nextKanbanStatus(id) {
+            var task = kanbanTasks.find(function(t) { return t.id === id; });
+            if (!task) return;
+            if (task.status === 'pending') task.status = 'progress';
+            else if (task.status === 'progress') task.status = 'done';
+            else task.status = 'pending';
+            if (task.status !== 'progress' && activeTimers[id]) {
+                clearInterval(activeTimers[id]);
+                delete activeTimers[id];
+            }
+            if (task.status === 'progress') resetTimer(id);
+            saveData();
+            renderKanban();
+        }
+
+        // Exportar/Importar
+        function exportData() {
+            var data = JSON.stringify({tasks: tasks, kanbanTasks: kanbanTasks}, null, 2);
+            var blob = new Blob([data], {type: 'application/json'});
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'backup-' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+        }
+        function importData(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var r = new FileReader();
+            r.onload = function(ev) {
+                try {
+                    var d = JSON.parse(ev.target.result);
+                    if (d.tasks) tasks = d.tasks;
+                    if (d.kanbanTasks) kanbanTasks = d.kanbanTasks;
+                    saveData();
+                    renderAll();
+                    showNotif('◤ Datos importados');
+                } catch (e) { showNotif('○ Error'); }
+            };
+            r.readAsText(file);
+        }
+        function clearAllTasks() {
+            if (confirm('¿Limpiar todo?')) {
+                tasks = [];
+                kanbanTasks = [];
+                for (var key in activeTimers) clearInterval(activeTimers[key]);
+                activeTimers = {};
+                saveData();
+                renderAll();
+                showNotif('○ Limpiado');
+            }
+        }
+
+        // Notificación toast
+        function showNotif(msg) {
+            var n = document.createElement('div');
+            n.className = 'notification';
+            n.textContent = msg;
+            document.body.appendChild(n);
+            setTimeout(function() { n.remove(); }, 3000);
+        }
+
+        // Cerrar modales al hacer click fuera
+        var modals = document.querySelectorAll('.modal');
+        for (var i = 0; i < modals.length; i++) {
+            modals[i].addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('active');
+            });
+        }
+
+        // Verificar tareas próximas
+        setInterval(function() {
+            if (!notifSettings.notif) return;
+            var mins = parseInt(document.getElementById('notifMinutes').value) || 5;
+            notifSettings.minutes = mins;
+            tasks.forEach(function(t) {
+                if (t.date && t.time && !t.completed) {
+                    var d = new Date(t.date + 'T' + t.time);
+                    var diff = Math.floor((d - new Date()) / 60000);
+                    if (diff === mins && diff > 0) {
+                        playSound();
+                        if (Notification.permission === 'granted') {
+                            new Notification('Tarea próxima', {body: t.title});
+                        }
+                        showNotif('◐ ' + t.title + ' en ' + diff + 'min');
+                    }
+                }
+            });
+        }, 60000);
+    </script>
+</body>
+</html>
