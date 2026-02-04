@@ -1473,6 +1473,33 @@
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         const fullDayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+        // Registrar Service Worker para notificaciones en segundo plano
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('Service Worker registrado:', registration.scope);
+                    
+                    // Escuchar mensajes del Service Worker
+                    navigator.serviceWorker.addEventListener('message', event => {
+                        if (event.data.action === 'stop-alarm') {
+                            stopAlarm();
+                        } else if (event.data.action === 'snooze') {
+                            // Implementar posponer
+                            stopAlarm();
+                            showNotification(`Alarma pospuesta ${event.data.minutes} minutos`);
+                        } else if (event.data.action === 'check-alarms') {
+                            checkPendingAlarms();
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.log('Error registrando Service Worker:', error);
+                });
+        }
+
+        // Variable para Wake Lock (mantener pantalla encendida)
+        let wakeLock = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
             renderAll();
@@ -1485,6 +1512,19 @@
 
             requestNotificationPermission();
             loadCustomAudio();
+            
+            // Verificar alarmas pendientes cuando la app vuelve al primer plano
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    checkPendingAlarms();
+                }
+            });
+            
+            // También verificar cuando la ventana vuelva a tener foco
+            window.addEventListener('focus', checkPendingAlarms);
+            
+            // Verificar alarmas cada vez que se carga la página
+            checkPendingAlarms();
         });
 
         function loadData() {
@@ -1606,6 +1646,58 @@
                 clearTimeout(alarmInterval);
                 alarmInterval = null;
             }
+            
+            // Liberar Wake Lock
+            releaseWakeLock();
+        }
+        
+        // Funciones para Wake Lock (mantener pantalla encendida durante timers)
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock activado');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock liberado');
+                    });
+                } catch (err) {
+                    console.log('Error al activar Wake Lock:', err);
+                }
+            }
+        }
+        
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+        
+        // Verificar alarmas pendientes (útil cuando la app vuelve al primer plano)
+        function checkPendingAlarms() {
+            const now = Date.now();
+            let hasTriggeredAlarm = false;
+            
+            kanbanTasks.forEach(task => {
+                if (task.status === 'progress' && task.endTime && !task.alarmTriggered) {
+                    if (now >= task.endTime) {
+                        task.alarmTriggered = true;
+                        task.elapsed = task.time * 60;
+                        triggerAlarm(task);
+                        hasTriggeredAlarm = true;
+                    } else {
+                        // Actualizar el tiempo transcurrido basado en el timestamp
+                        const elapsedSeconds = Math.floor((now - task.startTime) / 1000);
+                        task.elapsed = elapsedSeconds;
+                    }
+                }
+            });
+            
+            if (hasTriggeredAlarm) {
+                saveData();
+                renderKanban();
+            }
         }
 
         function startTimerLoop() {
@@ -1615,15 +1707,20 @@
         }
 
         function updateTimers() {
+            const now = Date.now();
+            
             kanbanTasks.forEach(task => {
-                if (task.status === 'progress') {
-                    task.elapsed = (task.elapsed || 0) + 1;
+                if (task.status === 'progress' && task.startTime && !task.alarmTriggered) {
+                    // Calcular tiempo transcurrido basado en timestamps
+                    const elapsedSeconds = Math.floor((now - task.startTime) / 1000);
+                    task.elapsed = elapsedSeconds;
 
                     const totalSeconds = task.time * 60;
-                    const remaining = totalSeconds - task.elapsed;
+                    const remaining = totalSeconds - elapsedSeconds;
 
-                    if (remaining <= 0 && !task.alarmTriggered) {
+                    if (remaining <= 0) {
                         task.alarmTriggered = true;
+                        task.elapsed = totalSeconds;
                         triggerAlarm(task);
                     }
 
@@ -1657,8 +1754,32 @@
 
             playAlarmSound();
             sendNotification('¡Tiempo Completado!', `La tarea "${task.title}" ha terminado`);
-
-            if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 1000]);
+            
+            // Vibración más intensa y persistente para móviles
+            if (navigator.vibrate) {
+                // Patrón de vibración que se repite varias veces
+                const vibratePattern = [500, 200, 500, 200, 1000, 200, 500, 200, 500];
+                navigator.vibrate(vibratePattern);
+                
+                // Continuar vibrando mientras la alarma está activa
+                const vibrateInterval = setInterval(() => {
+                    if (!isAlarmPlaying) {
+                        clearInterval(vibrateInterval);
+                    } else {
+                        navigator.vibrate(vibratePattern);
+                    }
+                }, 3000);
+            }
+            
+            // Intentar enviar notificación push a través del Service Worker
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    action: 'schedule-alarm',
+                    title: '¡Tiempo Completado!',
+                    body: `La tarea "${task.title}" ha terminado`,
+                    timestamp: Date.now()
+                });
+            }
         }
 
         function stopAlarm() {
@@ -1673,14 +1794,30 @@
         }
 
         function sendNotification(title, body) {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(title, {
+            if (!('Notification' in window)) return;
+            
+            if (Notification.permission === 'granted') {
+                const options = {
                     body: body,
                     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">◉</text></svg>',
                     badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">◉</text></svg>',
                     tag: 'zen-tasks-alarm',
-                    requireInteraction: true
-                });
+                    requireInteraction: true,
+                    vibrate: [500, 200, 500, 200, 1000],
+                    sound: customAudioData || null, // Algunos navegadores soportan esto
+                    renotify: true,
+                    silent: false
+                };
+                
+                // Usar Service Worker para notificaciones si está disponible
+                if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        registration.showNotification(title, options);
+                    });
+                } else {
+                    // Fallback a notificación normal
+                    new Notification(title, options);
+                }
             }
         }
 
@@ -2466,12 +2603,26 @@
 
             if (task.status === 'pending') {
                 task.status = 'progress';
-                task.elapsed = task.elapsed || 0;
+                // Iniciar timer con timestamps
+                const now = Date.now();
+                task.startTime = now;
+                task.endTime = now + (task.time * 60 * 1000);
+                task.elapsed = 0;
                 task.alarmTriggered = false;
+                // Activar Wake Lock para mantener pantalla encendida
+                requestWakeLock();
             } else if (task.status === 'progress') {
                 task.status = 'done';
+                // Limpiar timestamps
+                task.startTime = null;
+                task.endTime = null;
+                releaseWakeLock();
             } else {
                 task.status = 'pending';
+                // Limpiar timestamps
+                task.startTime = null;
+                task.endTime = null;
+                task.elapsed = 0;
             }
 
             saveData();
@@ -2512,10 +2663,22 @@
             const task = kanbanTasks.find(t => t.id === id);
 
             if (task) {
+                const previousStatus = task.status;
                 task.status = status;
-                if (status === 'progress') {
-                    task.elapsed = task.elapsed || 0;
+                
+                if (status === 'progress' && previousStatus !== 'progress') {
+                    // Iniciar timer con timestamps
+                    const now = Date.now();
+                    task.startTime = now;
+                    task.endTime = now + (task.time * 60 * 1000);
+                    task.elapsed = 0;
                     task.alarmTriggered = false;
+                    requestWakeLock();
+                } else if (status !== 'progress' && previousStatus === 'progress') {
+                    // Limpiar timestamps si sale de progreso
+                    task.startTime = null;
+                    task.endTime = null;
+                    releaseWakeLock();
                 }
 
                 saveData();
