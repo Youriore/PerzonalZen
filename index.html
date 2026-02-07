@@ -7,166 +7,273 @@
     <title>Zen Tasks - Gestión Completa</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel='stylesheet' href='css/styles.css'>
 </head>
 
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <h1>◉ Zen Tasks</h1>
-                <p>Gestión completa de tareas y hábitos</p>
-            </div>
-            <div class="header-right">
-                <button class="settings-btn" onclick="openSettingsModal()">
-                    <span>⚙</span>
-                    <span>Config</span>
-                </button>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span>◐</span>
-                    <span id="themeText">Oscuro</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="totalCount">0</div>
-                <div class="stat-label">Total Tareas</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="pendingCount">0</div>
-                <div class="stat-label">Pendientes</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="completedCount">0</div>
-                <div class="stat-label">Completadas</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="highPriorityCount">0</div>
-                <div class="stat-label">Alta Prioridad</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="habitsCount">0</div>
-                <div class="stat-label">Hábitos Activos</div>
-            </div>
-        </div>
-
-        <!-- Main Grid -->
-        <div class="main-grid">
-            <!-- Kanban -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>◈</span>
-                        Tablero Kanban
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar (Desktop) -->
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block sidebar collapse">
+                <div class="logo-container p-3">
+                    <div class="logo">
+                        <h1>Zen Tasks</h1>
+                        <p>Gestión de tareas</p>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="kanban-container">
-                        <div class="kanban-column kanban-pending" id="colPending" ondrop="drop(event, 'pending')"
-                            ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                            <div class="kanban-header">
-                                <span>⏳</span> Por Hacer
+
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column main-nav">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" onclick="switchView('dashboard')">
+                                <span class="material-icons">dashboard</span> Tablero
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="switchView('calendar')">
+                                <span class="material-icons">calendar_today</span> Calendario
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="switchView('schedule')">
+                                <span class="material-icons">schedule</span> Horario
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="switchView('habits')">
+                                <span class="material-icons">check_circle</span> Hábitos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="switchView('stats')">
+                                <span class="material-icons">bar_chart</span> Estadísticas
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-footer p-3 mt-auto">
+                    <button class="settings-btn w-100 mb-2" onclick="openSettingsModal()">
+                        <span class="material-icons">settings</span> Configuración
+                    </button>
+                    <button class="theme-toggle w-100" onclick="toggleTheme()">
+                        <span class="material-icons">dark_mode</span>
+                        <span id="themeText">Modo Oscuro</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Bottom Navigation (Mobile Only) -->
+            <nav class="bottom-nav d-md-none">
+                <a href="#" class="bottom-nav-item active" onclick="switchView('dashboard')">
+                    <span class="material-icons">dashboard</span>
+                    <span class="label">Tablero</span>
+                </a>
+                <a href="#" class="bottom-nav-item" onclick="switchView('calendar')">
+                    <span class="material-icons">calendar_today</span>
+                    <span class="label">Calendario</span>
+                </a>
+                <a href="#" class="bottom-nav-item" onclick="switchView('schedule')">
+                    <span class="material-icons">schedule</span>
+                    <span class="label">Horario</span>
+                </a>
+                <a href="#" class="bottom-nav-item" onclick="switchView('habits')">
+                    <span class="material-icons">check_circle</span>
+                    <span class="label">Hábitos</span>
+                </a>
+                <a href="#" class="bottom-nav-item" onclick="openSettingsModal()">
+                    <span class="material-icons">settings</span>
+                    <span class="label">Ajustes</span>
+                </a>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <!-- Mobile Header (Simplified) -->
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom d-md-none">
+                    <h1 class="h2">Zen Tasks</h1>
+                    <button class="theme-toggle-mobile btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
+                        <span class="material-icons" style="font-size: 1.2rem;">dark_mode</span>
+                    </button>
+                </div>
+
+                <!-- Desktop Header (Hidden on Mobile) -->
+                <header class="main-header d-none d-md-flex">
+                    <div class="header-left">
+                        <h1>Tablero de Tareas</h1>
+                        <p>Gestión completa de tareas y hábitos</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn" onclick="openModal('task')">
+                            <span>+</span> Nueva Tarea
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Schedule View (Hidden by default) -->
+                <div id="schedule-view" class="view-section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <span>🕒</span> Horario Semanal
                             </div>
-                            <div id="kanbanPending"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban')">+ Agregar tarea</button>
+                            <button class="btn" onclick="openModal('schedule')">
+                                <span>+</span> Agregar Actividad
+                            </button>
                         </div>
-                        <div class="kanban-column kanban-progress" id="colProgress" ondrop="drop(event, 'progress')"
-                            ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                            <div class="kanban-header">
-                                <span>▶</span> En Proceso
+                        <div class="card-body">
+                            <div class="schedule-grid">
+                                <!-- Header Row (Days) -->
+                                <div class="schedule-header-cell time-col">Hora</div>
+                                <div class="schedule-header-cell">Lunes</div>
+                                <div class="schedule-header-cell">Martes</div>
+                                <div class="schedule-header-cell">Miércoles</div>
+                                <div class="schedule-header-cell">Jueves</div>
+                                <div class="schedule-header-cell">Viernes</div>
+                                <div class="schedule-header-cell">Sábado</div>
+                                <div class="schedule-header-cell">Domingo</div>
+
+                                <!-- Filled via JS -->
+                                <div id="schedule-grid-content" class="schedule-content"></div>
                             </div>
-                            <div id="kanbanProgress"></div>
                         </div>
-                        <div class="kanban-column kanban-done" id="colDone" ondrop="drop(event, 'done')"
-                            ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                            <div class="kanban-header">
-                                <span>✔</span> Completadas
+                    </div>
+                </div>
+                <!-- Dashboard View -->
+                <div id="dashboard-view" class="dashboard-grid view-section">
+                    <!-- Welcome Greeting Section -->
+                    <div class="welcome-container mb-4" style="grid-column: 1 / -1;">
+                        <div class="welcome-text">
+                            <h2 id="greeting-title">Hola, Youri 👋</h2>
+                            <p class="text-muted">Aquí tienes un resumen de tu día.</p>
+                        </div>
+                        <div class="date-display" id="header-date">
+                            <!-- Date via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Kanban Board (Large Area) -->
+                    <div class="card kanban-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <span>◈</span>
+                                Tablero Kanban
                             </div>
-                            <div id="kanbanDone"></div>
+                        </div>
+                        <div class="card-body">
+                            <div class="kanban-container">
+                                <div class="kanban-column kanban-pending" id="colPending"
+                                    ondrop="drop(event, 'pending')" ondragover="allowDrop(event)"
+                                    ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                                    <div class="kanban-header">
+                                        <span>⏳</span> Por Hacer
+                                    </div>
+                                    <div id="kanbanPending"></div>
+                                    <button class="add-task-btn" onclick="openModal('kanban')">+ Agregar tarea</button>
+                                </div>
+                                <div class="kanban-column kanban-progress" id="colProgress"
+                                    ondrop="drop(event, 'progress')" ondragover="allowDrop(event)"
+                                    ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                                    <div class="kanban-header">
+                                        <span>▶</span> En Proceso
+                                    </div>
+                                    <div id="kanbanProgress"></div>
+                                </div>
+                                <div class="kanban-column kanban-done" id="colDone" ondrop="drop(event, 'done')"
+                                    ondragover="allowDrop(event)" ondragenter="dragEnter(event)"
+                                    ondragleave="dragLeave(event)">
+                                    <div class="kanban-header">
+                                        <span>✔</span> Completadas
+                                    </div>
+                                    <div id="kanbanDone"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Calendar -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>◐</span>
-                        Calendario
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="calendar-nav">
-                        <div class="calendar-views">
-                            <button class="view-btn" id="viewDay" onclick="setCalendarView('day')">Día</button>
-                            <button class="view-btn" id="viewWeek" onclick="setCalendarView('week')">Semana</button>
-                            <button class="view-btn active" id="viewMonth"
-                                onclick="setCalendarView('month')">Mes</button>
+                    <!-- Right Column (Calendar & Habits) -->
+                    <div class="right-column">
+                        <!-- Calendar -->
+                        <div class="card calendar-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <span>◐</span>
+                                    Calendario
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="calendar-nav">
+                                    <div class="calendar-views">
+                                        <button class="view-btn" id="viewDay"
+                                            onclick="setCalendarView('day')">Día</button>
+                                        <button class="view-btn" id="viewWeek"
+                                            onclick="setCalendarView('week')">Semana</button>
+                                        <button class="view-btn active" id="viewMonth"
+                                            onclick="setCalendarView('month')">Mes</button>
+                                    </div>
+                                    <div class="calendar-nav-arrows">
+                                        <button class="nav-arrow" onclick="navigateCalendar(-1)">◀</button>
+                                        <span class="current-period" id="currentPeriod"></span>
+                                        <button class="nav-arrow" onclick="navigateCalendar(1)">▶</button>
+                                    </div>
+                                </div>
+                                <div class="calendar-grid" id="calendarGrid"></div>
+                            </div>
                         </div>
-                        <div class="calendar-nav-arrows">
-                            <button class="nav-arrow" onclick="navigateCalendar(-1)">◀</button>
-                            <span class="current-period" id="currentPeriod"></span>
-                            <button class="nav-arrow" onclick="navigateCalendar(1)">▶</button>
-                        </div>
-                    </div>
-                    <div class="calendar-grid" id="calendarGrid"></div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Habits Section -->
-        <div class="habits-section">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>◉</span>
-                        Hábitos
-                    </div>
-                    <button class="btn-secondary" onclick="openModal('habit')">+ Nuevo Hábito</button>
-                </div>
-                <div class="card-body" id="habitsList"></div>
-            </div>
-        </div>
-
-        <!-- Tasks List -->
-        <div class="tasks-section">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>◑</span>
-                        Mis Tareas
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <div class="search-box">
-                            <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)">
+                        <!-- Habits Section -->
+                        <div class="card habits-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <span>◉</span>
+                                    Hábitos
+                                </div>
+                                <button class="btn-secondary" onclick="openModal('habit')">+ Nuevo</button>
+                            </div>
+                            <div class="card-body" id="habitsList"></div>
                         </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="filters" style="margin-bottom: 16px;">
-                        <button class="filter-btn active" onclick="setFilter('all', this)">Todas</button>
-                        <button class="filter-btn" onclick="setFilter('pending', this)">Pendientes</button>
-                        <button class="filter-btn" onclick="setFilter('completed', this)">Completadas</button>
-                        <button class="filter-btn" onclick="setFilter('today', this)">Hoy</button>
+
+                    <!-- Bottom Full Width (Tasks List) -->
+                    <div class="card tasks-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <span>◑</span>
+                                Mis Tareas
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <div class="search-box">
+                                    <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="filters" style="margin-bottom: 16px;">
+                                <button class="filter-btn active" onclick="setFilter('all', this)">Todas</button>
+                                <button class="filter-btn" onclick="setFilter('pending', this)">Pendientes</button>
+                                <button class="filter-btn" onclick="setFilter('completed', this)">Completadas</button>
+                                <button class="filter-btn" onclick="setFilter('today', this)">Hoy</button>
+                            </div>
+                            <div class="tasks-list" id="tasksList"></div>
+                        </div>
                     </div>
-                    <div class="tasks-list" id="tasksList"></div>
-                </div>
-            </div>
+            </main>
         </div>
     </div>
 
-    <!-- FAB -->
     <button class="fab" onclick="openModal('task')">+</button>
 
     <!-- Modal -->
     <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="modal" id="modalContent" onclick="event.stopPropagation()">
+        <div class="zen-modal" id="modalContent" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-title" id="modalTitle">Nueva Tarea</div>
                 <button class="modal-close" onclick="closeModal()">×</button>
@@ -186,7 +293,7 @@
 
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settingsOverlay" onclick="closeSettingsModal(event)">
-        <div class="modal settings-modal" onclick="event.stopPropagation()">
+        <div class="zen-modal settings-modal" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-title">⚙ Configuración</div>
                 <button class="modal-close" onclick="closeSettingsModal()">×</button>
@@ -212,7 +319,8 @@
                             <h3>Configuración General</h3>
                             <div class="setting-item">
                                 <div class="setting-label">🔔 Notificaciones</div>
-                                <div class="setting-description">Activar notificaciones de escritorio para recordatorios
+                                <div class="setting-description">Activar notificaciones de escritorio para
+                                    recordatorios
                                 </div>
                                 <div class="settings-toggle">
                                     <div class="toggle-switch active" id="toggle-notifications"
@@ -238,9 +346,11 @@
                             <h3>Gestión de Datos</h3>
                             <div class="setting-item">
                                 <div class="setting-label">📤 Exportar Datos</div>
-                                <div class="setting-description">Descarga todos tus datos para respaldarlos</div>
+                                <div class="setting-description">Descarga todos tus datos para respaldarlos
+                                </div>
                                 <div class="export-import-btns">
-                                    <button class="btn-secondary" onclick="exportData()">📥 Exportar JSON</button>
+                                    <button class="btn-secondary" onclick="exportData()">📥 Exportar
+                                        JSON</button>
                                 </div>
                             </div>
                             <div class="setting-item">
@@ -249,21 +359,26 @@
                                 <input type="file" id="import-file" accept=".json" style="display: none;"
                                     onchange="importData(this)">
                                 <button class="btn-secondary"
-                                    onclick="document.getElementById('import-file').click()">📤 Importar JSON</button>
+                                    onclick="document.getElementById('import-file').click()">📤 Importar
+                                    JSON</button>
                             </div>
                             <div class="setting-item">
                                 <div class="setting-label">🗑️ Borrar Todo</div>
-                                <div class="setting-description">Elimina todas las tareas, hábitos y datos guardados
+                                <div class="setting-description">Elimina todas las tareas, hábitos y datos
+                                    guardados
                                 </div>
                                 <button class="btn-secondary" onclick="clearAllData()"
-                                    style="background: var(--danger); color: white;">⚠️ Borrar Todos los Datos</button>
+                                    style="background: var(--danger); color: white;">⚠️ Borrar Todos los
+                                    Datos</button>
                             </div>
                         </div>
                         <div id="settings-about" class="settings-section">
                             <h3>Acerca de Zen Tasks</h3>
                             <div class="setting-item">
                                 <div class="setting-label">◉ Zen Tasks</div>
-                                <div class="setting-description">Versión 1.0 - Gestión completa de tareas y hábitos con
+                                <div class="setting-description">Versión 1.0 - Gestión completa de tareas y
+                                    hábitos
+                                    con
                                     temporizadores, calendario y seguimiento de hábitos.</div>
                             </div>
                             <div class="setting-item">
