@@ -118,6 +118,39 @@
                     </div>
                 </header>
 
+                <!-- Focus Mode View -->
+                <div id="focus-view" class="view-section"
+                    style="display: none; height: 100vh; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
+                    <div class="focus-container" style="max-width: 600px; width: 100%;">
+                        <div style="margin-bottom: 2rem;">
+                            <span style="font-size: 1.2rem; opacity: 0.7; letter-spacing: 2px;">MODO ENFOQUE</span>
+                        </div>
+
+                        <h1 id="focusTaskTitle" style="font-size: 3rem; margin-bottom: 2rem; line-height: 1.2;">
+                            Selecciona una tarea</h1>
+
+                        <div id="focusTimerDisplay"
+                            style="font-size: 6rem; font-weight: bold; font-family: monospace; margin-bottom: 2rem; color: var(--primary);">
+                            25:00</div>
+
+                        <div class="focus-controls"
+                            style="display: flex; gap: 20px; justify-content: center; margin-bottom: 3rem;">
+                            <button class="btn-primary" onclick="toggleTimer()"
+                                style="padding: 1rem 3rem; font-size: 1.5rem; border-radius: 50px;">
+                                <span id="focusPlayIcon">▶</span> <span id="focusBtnText">Iniciar</span>
+                            </button>
+                            <button class="btn-secondary" onclick="stopTimer()"
+                                style="width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem;">⏹</button>
+                        </div>
+
+                        <div class="focus-actions" style="display: flex; gap: 15px; justify-content: center;">
+                            <button class="btn-primary" onclick="completeFocusTask()"
+                                style="background: var(--success);">✔ Completar Tarea</button>
+                            <button class="btn-secondary" onclick="exitFocusMode()">Salir del Modo Zen</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Schedule View (Hidden by default) -->
                 <div id="schedule-view" class="view-section" style="display: none;">
                     <div class="card">

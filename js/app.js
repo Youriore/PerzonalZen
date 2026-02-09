@@ -98,10 +98,68 @@ function loadData() {
         const v = localStorage.getItem('audioVolume');
 
         if (t) tasks = JSON.parse(t);
+        else {
+            // Rich Example Data
+            tasks = [
+                {
+                    id: 1,
+                    title: "Terminar informe de proyecto",
+                    priority: "alta",
+                    completed: false,
+                    tags: ["Trabajo", "Urgente"],
+                    subtasks: [
+                        { title: "Recopilar datos", completed: true },
+                        { title: "Redactar borrador", completed: false },
+                        { title: "Revisión final", completed: false }
+                    ],
+                    date: new Date().toISOString().split('T')[0],
+                    time: "10:00"
+                },
+                {
+                    id: 2,
+                    title: "Comprar víveres",
+                    priority: "media",
+                    completed: false,
+                    tags: ["Casa"],
+                    subtasks: [],
+                    date: new Date().toISOString().split('T')[0]
+                }
+            ];
+        }
+
         if (k) kanbanTasks = JSON.parse(k);
+        else kanbanTasks = [
+            { id: 1, title: 'Diseñar interfaz', status: 'pending', time: 45 },
+            { id: 2, title: 'Implementar login', status: 'progress', time: 60, elapsed: 1200 },
+            { id: 3, title: 'Configurar servidor', status: 'done', time: 30 }
+        ];
+
         if (h) habits = JSON.parse(h);
+        else {
+            const today = new Date();
+            const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+            const twoDaysAgo = new Date(today); twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+            habits = [
+                {
+                    id: 1,
+                    title: "Leer 30 minutos",
+                    description: "Libro actual: Hábitos Atómicos",
+                    days: [true, true, true, true, true, true, true],
+                    completedDates: [
+                        twoDaysAgo.toISOString().split('T')[0],
+                        yesterday.toISOString().split('T')[0]
+                    ]
+                }
+            ];
+        }
+
         if (s) scheduleItems = JSON.parse(s);
         if (v) audioVolume = parseFloat(v);
+
+        // Save defaults if new
+        if (!t || !k || !h) saveData();
+
     } catch (e) {
         tasks = [];
         kanbanTasks = [];
@@ -773,10 +831,14 @@ function renderHabits() {
 
         return `
                     <div class="habit-card">
-                        <div class="habit-info">
-                            <div class="habit-title">${escapeHtml(habit.title)}</div>
-                            <div class="habit-meta">${habit.description || 'Sin descripción'}</div>
-                        </div>
+                <div class="habit-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="habit-title">
+                        ${escapeHtml(habit.title)}
+                        ${streak > 0 ? `<span class="habit-streak" style="margin-left:8px; font-size:0.9rem; background:rgba(255,100,0,0.1); color:#ff6b00; padding:2px 8px; border-radius:12px;">🔥 ${streak}</span>` : ''}
+                    </div>
+                    <button class="btn-icon delete" onclick="deleteHabit(${habit.id})" style="width:24px;height:24px;font-size:1.2rem;display:flex;align-items:center;justify-content:center;">×</button>
+                </div>
+                <div class="habit-desc">${habit.description || ''}</div>
                         <div class="habit-days">
                             ${weekDays.map(d => `
                                 <div class="habit-day ${d.completed ? 'completed' : ''} ${d.isToday ? 'today' : ''}"
@@ -785,14 +847,6 @@ function renderHabits() {
                                     ${d.label}
                                 </div>
                             `).join('')}
-                        </div>
-                        <div class="habit-streak">
-                            <div class="streak-number">${streak}</div>
-                            <div class="streak-label">días</div>
-                        </div>
-                        <div class="habit-actions" style="display: flex; gap: 8px;">
-                            <button class="btn-icon" onclick="editHabit(${habit.id})" title="Editar">○</button>
-                            <button class="btn-icon delete" onclick="deleteHabit(${habit.id}, event)" title="Eliminar">×</button>
                         </div>
                     </div>
                 `;
@@ -926,6 +980,36 @@ function confirmDelete() {
     pendingDelete = null;
 }
 
+// Subtasks Logic
+let tempSubtasks = [];
+
+function addSubtaskItem() {
+    const input = document.getElementById('newSubtaskInput');
+    const val = input.value.trim();
+    if (val) {
+        tempSubtasks.push({ title: val, completed: false });
+        input.value = '';
+        renderSubtasksList();
+    }
+}
+
+function removeSubtaskItem(index) {
+    tempSubtasks.splice(index, 1);
+    renderSubtasksList();
+}
+
+function renderSubtasksList() {
+    const container = document.getElementById('subtasksList');
+    if (!container) return;
+
+    container.innerHTML = tempSubtasks.map((st, i) => `
+        <div class="subtask-edit-item" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:6px 10px; margin-bottom:4px; border-radius:6px;">
+            <span>${st.title}</span>
+            <button type="button" class="btn-icon delete" onclick="removeSubtaskItem(${i})" style="width:20px; height:20px; font-size:1.2rem;">×</button>
+        </div>
+    `).join('');
+}
+
 function createTaskForm() {
     return `
                 <form onsubmit="handleTaskSubmit(event)">
@@ -951,6 +1035,22 @@ function createTaskForm() {
                             </div>
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Etiquetas</label>
+                        <input type="text" id="taskTags" class="form-input" placeholder="Ej: Trabajo, Personal, Urgente (separar por comas)">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Subtareas</label>
+                        <div class="subtask-input-group" style="display:flex; gap:8px; margin-bottom:8px;">
+                            <input type="text" id="newSubtaskInput" class="form-input" placeholder="Nueva subtarea..." onkeypress="if(event.key==='Enter'){event.preventDefault(); addSubtaskItem();}">
+                            <button type="button" class="btn-secondary" style="width:auto; padding:0 12px;" onclick="addSubtaskItem()">+</button>
+                        </div>
+                        <div id="subtasksList" class="subtasks-list-container">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="form-group">
@@ -968,7 +1068,7 @@ function createTaskForm() {
                         <textarea id="taskNotes" class="form-textarea" placeholder="Detalles adicionales..."></textarea>
                     </div>
                     
-                    <button type="submit" class="btn-primary">Crear Tarea</button>
+                    <button type="submit" class="btn-primary">Guardar Tarea</button>
                 </form>
             `;
 }
@@ -1124,11 +1224,15 @@ function selectPriority(priority, el) {
 }
 
 function setupTaskForm() {
+    tempSubtasks = []; // Reset for new task
     if (selectedCalendarDate) document.getElementById('taskDate').value = selectedCalendarDate;
 }
 
 function handleTaskSubmit(e) {
     e.preventDefault();
+
+    const tagsVal = document.getElementById('taskTags').value;
+    const tags = tagsVal ? tagsVal.split(',').map(s => s.trim()).filter(s => s) : [];
 
     if (editingId) {
         const task = tasks.find(t => t.id === editingId);
@@ -1138,6 +1242,8 @@ function handleTaskSubmit(e) {
             task.date = document.getElementById('taskDate').value;
             task.time = document.getElementById('taskTime').value;
             task.notes = document.getElementById('taskNotes').value.trim();
+            task.tags = tags;
+            task.subtasks = [...tempSubtasks]; // Save copy
             showNotification('Tarea actualizada');
         }
         editingId = null;
@@ -1149,6 +1255,8 @@ function handleTaskSubmit(e) {
             date: document.getElementById('taskDate').value,
             time: document.getElementById('taskTime').value,
             notes: document.getElementById('taskNotes').value.trim(),
+            tags: tags,
+            subtasks: [...tempSubtasks],
             completed: false
         });
         showNotification('Tarea creada');
@@ -1231,6 +1339,11 @@ function editTask(id) {
         document.getElementById('taskDate').value = task.date || '';
         document.getElementById('taskTime').value = task.time || '';
         document.getElementById('taskNotes').value = task.notes || '';
+        document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
+
+        // Load subtasks
+        tempSubtasks = task.subtasks ? JSON.parse(JSON.stringify(task.subtasks)) : [];
+        renderSubtasksList();
 
         const priorityOpt = document.querySelector(`.priority-option.${task.priority}`);
         if (priorityOpt) selectPriority(task.priority, priorityOpt);
@@ -1417,7 +1530,10 @@ function searchTasks(query) {
     const filtered = tasks.filter(t => t.title.toLowerCase().includes(q));
 
     document.getElementById('tasksList').innerHTML = filtered.map(t => `
-                <div class="task-item ${t.priority} ${t.completed ? 'completed' : ''}" onclick="toggleTask(${t.id})">
+                <div class="task-item ${t.priority} ${t.completed ? 'completed' : ''}" 
+                     draggable="true" 
+                     ondragstart="dragTask(event, ${t.id})"
+                     onclick="toggleTask(${t.id})">
                     <div class="task-content">
                         <div class="task-title">${escapeHtml(t.title)}</div>
                         <div class="task-meta">
@@ -1462,8 +1578,14 @@ function renderTasks() {
                         <div class="task-title">${escapeHtml(t.title)}</div>
                         <div class="task-meta">
                             <span class="priority-tag ${t.priority}">${t.priority.toUpperCase()}</span>
+                            ${t.tags && t.tags.length > 0 ? t.tags.map(tag => `<span class="priority-tag" style="background:var(--accent); color:var(--primary);">${tag}</span>`).join('') : ''}
                             ${t.date ? `<span>◐ ${formatDateDisplay(t.date)}</span>` : ''}
                             ${t.time ? `<span>◉ ${t.time}</span>` : ''}
+                            ${t.subtasks && t.subtasks.length > 0 ? `
+                                <span style="font-size:0.8rem; background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;">
+                                    ✓ ${t.subtasks.filter(st => st.completed).length}/${t.subtasks.length}
+                                </span>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="task-actions" onclick="event.stopPropagation()">
@@ -1702,6 +1824,11 @@ function renderSchedule() {
             cell.className = 'schedule-cell';
             cell.style.gridColumn = `${day + 1} / ${day + 2}`;
             cell.style.gridRow = `${hour - startHour + 2} / ${hour - startHour + 3}`;
+
+            // Drag and Drop Events
+            cell.ondragover = (e) => allowDrop(e);
+            cell.ondrop = (e) => dropTaskOnSchedule(e, day, hour);
+
             cell.onclick = () => openScheduleModal(day, hour);
             gridContent.appendChild(cell);
         }
@@ -1975,10 +2102,49 @@ function editScheduleItem(id, e) {
 
     // Fill values after HTML injection
     document.getElementById('schSubject').value = item.subject;
-
-    // Select color visual
-    // (Simpler to just rely on user re-selecting if needed, or implement full logic. 
-    // For now, let's keep it simple: defaulting to new form logic is ok, but we need to select the color)
+    document.getElementById('schStart').value = item.startTime;
+    document.getElementById('schEnd').value = item.endTime;
+    document.getElementById('schTravelBefore').value = item.travelBefore || 0;
+    document.getElementById('schTravelAfter').value = item.travelAfter || 0;
 
     modal.classList.add('active');
+}
+
+// Drag and Drop Logic for Schedule
+function dragTask(ev, taskId) {
+    ev.dataTransfer.setData("taskId", taskId);
+    ev.dataTransfer.effectAllowed = "copy";
+}
+
+function allowDrop(ev) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "copy";
+}
+
+function dropTaskOnSchedule(ev, day, hour) {
+    ev.preventDefault();
+    const taskId = ev.dataTransfer.getData("taskId");
+    const task = tasks.find(t => t.id == taskId);
+
+    if (task) {
+        // Create a new schedule item from the task
+        const startTime = `${hour.toString().padStart(2, '0')}:00`;
+        const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`; // Default 1 hour
+
+        const newItem = {
+            id: Date.now(),
+            subject: task.title,
+            days: [day], // The specific day dropped on
+            startTime: startTime,
+            endTime: endTime,
+            travelBefore: 0,
+            travelAfter: 0,
+            color: 'primary' // Default color
+        };
+
+        scheduleItems.push(newItem);
+        localStorage.setItem('zenSchedule', JSON.stringify(scheduleItems));
+        renderSchedule();
+        showNotification('Tarea agendada');
+    }
 }
