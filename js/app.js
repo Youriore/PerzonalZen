@@ -192,6 +192,12 @@ function switchView(viewId) {
             renderHabits();
         } else if (viewId === 'schedule') {
             if (typeof renderSchedule === 'function') renderSchedule();
+        } else if (viewId === 'timeblocking') {
+            renderTimeBlocking();
+        } else if (viewId === 'pomodoro') {
+            initPomodoro();
+        } else if (viewId === 'energy') {
+            initEnergyManagement();
         }
     }
 
@@ -549,13 +555,34 @@ function renderAll() {
 // Stats function removed
 
 function renderKanban() {
-    const pending = kanbanTasks.filter(t => t.status === 'pending');
-    const progress = kanbanTasks.filter(t => t.status === 'progress');
-    const done = kanbanTasks.filter(t => t.status === 'done');
+    // Apply search filter if exists
+    const filteredTasks = kanbanTasks.filter(task => {
+        if (!kanbanSearchTerm) return true;
+        return task.title.toLowerCase().includes(kanbanSearchTerm) ||
+               (task.description && task.description.toLowerCase().includes(kanbanSearchTerm));
+    });
+    
+    const pending = filteredTasks.filter(t => t.status === 'pending');
+    const progress = filteredTasks.filter(t => t.status === 'progress');
+    const done = filteredTasks.filter(t => t.status === 'done');
 
-    document.getElementById('kanbanPending').innerHTML = pending.map(t => createKanbanItem(t)).join('');
-    document.getElementById('kanbanProgress').innerHTML = progress.map(t => createKanbanItem(t)).join('');
-    document.getElementById('kanbanDone').innerHTML = done.map(t => createKanbanItem(t)).join('');
+    // Update headers with counts
+    document.querySelector('#colPending .kanban-header').setAttribute('data-count', pending.length);
+    document.querySelector('#colProgress .kanban-header').setAttribute('data-count', progress.length);
+    document.querySelector('#colDone .kanban-header').setAttribute('data-count', done.length);
+
+    // Show empty states if filtered
+    const emptyState = '<div class="kanban-empty">Sin tareas</div>';
+    
+    document.getElementById('kanbanPending').innerHTML = pending.length > 0 
+        ? pending.map(t => createKanbanItem(t)).join('') 
+        : emptyState;
+    document.getElementById('kanbanProgress').innerHTML = progress.length > 0 
+        ? progress.map(t => createKanbanItem(t)).join('') 
+        : emptyState;
+    document.getElementById('kanbanDone').innerHTML = done.length > 0 
+        ? done.map(t => createKanbanItem(t)).join('') 
+        : emptyState;
 }
 
 function createKanbanItem(task) {
@@ -580,17 +607,20 @@ function createKanbanItem(task) {
     } else if (task.status === 'done') {
         timerHtml = `<span style="color: var(--success);">✔ Completada</span>`;
     } else {
-        timerHtml = `<span>◐ ${task.time}min</span>`;
+        const timeDisplay = task.time ? `${task.time}min` : '∞';
+        timerHtml = `<span>⏱ ${timeDisplay}</span>`;
     }
 
     return `
-                <div class="kanban-task" draggable="true" ondragstart="dragStart(event, ${task.id})" ondragend="dragEnd(event)" onclick="editKanban(${task.id})">
+                <div class="kanban-task" draggable="true" ondragstart="dragStart(event, ${task.id})" ondragend="dragEnd(event)" 
+                     onclick="editKanban(${task.id})" ondblclick="quickEditKanban(${task.id}, event)">
                     <div class="kanban-task-title">${escapeHtml(task.title)}</div>
                     <div class="kanban-task-meta">
                         ${timerHtml}
                         <div class="kanban-actions" onclick="event.stopPropagation()">
-                            <button class="btn-icon" onclick="moveKanban(${task.id}, event)" title="Mover">▶</button>
-                            <button class="btn-icon delete" onclick="deleteKanban(${task.id}, event)" title="Eliminar">×</button>
+                            <button class="btn-icon" data-tooltip="Iniciar Timer" onclick="startKanbanTimer(${task.id}, event)">⏱</button>
+                            <button class="btn-icon" data-tooltip="Mover Columna" onclick="moveKanban(${task.id}, event)">↔</button>
+                            <button class="btn-icon delete" data-tooltip="Eliminar" onclick="deleteKanban(${task.id}, event)">🗑</button>
                         </div>
                     </div>
                 </div>
@@ -897,12 +927,17 @@ function deleteTask(id, event) {
     openModal('delete');
 }
 
-function openModal(mode, date = null) {
+function openModal(mode, date = null, status = 'pending') {
     modalMode = mode;
     editingId = null;
     editingKanbanId = null;
     editingHabitId = null;
     selectedCalendarDate = date;
+    
+    // Store default status for kanban tasks
+    if (mode === 'kanban' && status) {
+        modalMode = { mode, status };
+    }
 
     const modal = document.getElementById('modalOverlay');
     const modalContent = document.getElementById('modalContent');
@@ -915,8 +950,10 @@ function openModal(mode, date = null) {
         title.textContent = 'Nueva Tarea';
         body.innerHTML = createTaskForm();
         setupTaskForm();
-    } else if (mode === 'kanban') {
-        title.textContent = 'Nueva Tarea Kanban';
+    } else if (mode === 'kanban' || (mode && mode.mode === 'kanban')) {
+        const status = mode.status || 'pending';
+        const statusLabel = getStatusLabel(status);
+        title.textContent = `Nueva Tarea - ${statusLabel}`;
         body.innerHTML = createKanbanForm();
     } else if (mode === 'habit') {
         title.textContent = 'Nuevo Hábito';
@@ -1279,15 +1316,20 @@ function handleKanbanSubmit(e) {
         }
         editingKanbanId = null;
     } else {
+        // Get status from modalMode or default to 'pending'
+        const taskStatus = (modalMode && modalMode.status) ? modalMode.status : 'pending';
+        
         kanbanTasks.push({
             id: Date.now(),
             title: document.getElementById('kanbanTitle').value.trim(),
             time: parseInt(document.getElementById('kanbanTime').value) || 30,
-            status: 'pending',
-            elapsed: 0,
+            status: taskStatus,
+            elapsed: taskStatus === 'progress' ? 0 : undefined,
+            startTime: taskStatus === 'progress' ? Date.now() : null,
+            endTime: taskStatus === 'progress' ? Date.now() + (parseInt(document.getElementById('kanbanTime').value) || 30) * 60 * 1000 : null,
             alarmTriggered: false
         });
-        showNotification('Tarea agregada al kanban');
+        showNotification(`Tarea agregada a ${getStatusLabel(taskStatus)}`);
     }
 
     saveData();
@@ -1407,6 +1449,661 @@ function deleteKanban(id, e) {
     if (e && e.stopPropagation) e.stopPropagation();
     pendingDelete = { type: 'kanban', id: id };
     openModal('delete');
+}
+
+function startKanbanTimer(id, e) {
+    e.stopPropagation();
+    const task = kanbanTasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (task.status === 'pending') {
+        task.status = 'progress';
+        // Iniciar timer con timestamps
+        const now = Date.now();
+        task.startTime = now;
+        task.endTime = now + (task.time * 60 * 1000);
+        task.elapsed = 0;
+        task.alarmTriggered = false;
+        requestWakeLock();
+        
+        saveData();
+        renderKanban();
+        showNotification('⏱ Timer iniciado');
+    }
+}
+
+function quickEditKanban(id, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const task = kanbanTasks.find(t => t.id === id);
+    if (!task) return;
+    
+    const taskElement = e.currentTarget;
+    const titleElement = taskElement.querySelector('.kanban-task-title');
+    
+    // Create inline edit
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = task.title;
+    input.className = 'kanban-quick-edit';
+    input.style.cssText = `
+        background: var(--card);
+        border: 2px solid var(--accent);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        color: inherit;
+        width: 100%;
+        outline: none;
+    `;
+    
+    titleElement.innerHTML = '';
+    titleElement.appendChild(input);
+    input.focus();
+    input.select();
+    
+    const saveEdit = () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== task.title) {
+            task.title = newTitle;
+            saveData();
+            renderKanban();
+            showNotification('✏️ Tarea actualizada');
+        } else {
+            renderKanban();
+        }
+    };
+    
+    input.addEventListener('blur', saveEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveEdit();
+        } else if (e.key === 'Escape') {
+            renderKanban();
+        }
+    });
+}
+
+let kanbanSearchTerm = '';
+let timeBlocks = [];
+
+function filterKanban(searchTerm) {
+    kanbanSearchTerm = searchTerm.toLowerCase();
+    renderKanban();
+}
+
+function clearKanbanSearch() {
+    kanbanSearchTerm = '';
+    document.getElementById('kanbanSearch').value = '';
+    renderKanban();
+    showNotification('🔍 Búsqueda limpiada');
+}
+
+// Time Blocking Functions
+function generateTimeBlocking() {
+    timeBlocks = [];
+    
+    // Get all pending and progress tasks
+    const relevantTasks = [...tasks, ...kanbanTasks.filter(t => t.status === 'pending')];
+    
+    // Sort by priority and estimated time
+    relevantTasks.sort((a, b) => {
+        const priorityOrder = { alta: 3, media: 2, baja: 1 };
+        const aPriority = priorityOrder[a.prioridad] || 1;
+        const bPriority = priorityOrder[b.prioridad] || 1;
+        
+        if (aPriority !== bPriority) {
+            return bPriority - aPriority; // Higher priority first
+        }
+        
+        // If same priority, shorter tasks first
+        const aTime = a.time || 30;
+        const bTime = b.time || 30;
+        return aTime - bTime;
+    });
+    
+    // Generate time blocks
+    const startTime = 8; // 8 AM
+    const endTime = 18; // 6 PM
+    
+    let currentTime = startTime;
+    let totalPlannedMinutes = 0;
+    
+    relevantTasks.forEach(task => {
+        const taskDuration = task.time || 30;
+        const taskHours = Math.floor(taskDuration / 60);
+        const taskMinutes = taskDuration % 60;
+        
+        // Check if task fits in remaining time
+        const endTimeAdjusted = currentTime + taskHours + (taskMinutes > 0 ? 1 : 0);
+        
+        if (endTimeAdjusted <= endTime) {
+            timeBlocks.push({
+                ...task,
+                startTime: `${currentTime.toString().padStart(2, '0')}:00`,
+                endTime: `${endTimeAdjusted.toString().padStart(2, '0')}:00`,
+                duration: taskDuration,
+                type: task.prioridad || 'media'
+            });
+            
+            currentTime = endTimeAdjusted;
+            totalPlannedMinutes += taskDuration;
+        }
+    });
+    
+    // Add breaks
+    const finalTimeBlocks = [];
+    timeBlocks.forEach((block, index) => {
+        finalTimeBlocks.push(block);
+        
+        // Add break after each task (except last)
+        if (index < timeBlocks.length - 1) {
+            const nextTaskStart = timeBlocks[index + 1].startTime;
+            const currentEnd = block.endTime;
+            const breakStart = currentEnd;
+            const breakEnd = nextTaskStart;
+            
+            finalTimeBlocks.push({
+                type: 'break',
+                startTime: breakStart,
+                endTime: breakEnd,
+                duration: 15 // 15 minute breaks
+            });
+        }
+    });
+    
+    timeBlocks = finalTimeBlocks;
+    renderTimeBlocking();
+    updateTimeBlockingStats(totalPlannedMinutes);
+    showNotification('🎯 Time blocking generado automáticamente');
+}
+
+function renderTimeBlocking() {
+    const grid = document.getElementById('timeblockingGrid');
+    if (!grid) return;
+    
+    const hours = Array.from({length: 13}, (_, i) => i + 8); // 8 AM to 8 PM
+    
+    let html = '';
+    
+    // Header row with hours
+    html += '<div class="timeblock-header">Hora</div>';
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    days.forEach(day => {
+        html += `<div class="timeblock-header">${day}</div>`;
+    });
+    
+    // Time slots
+    hours.forEach(hour => {
+        html += `<div class="timeblock-cell">${hour.toString().padStart(2, '0')}:00</div>`;
+        
+        days.forEach((day, dayIndex) => {
+            const timeSlot = timeBlocks.find(block => 
+                block.startTime === `${hour.toString().padStart(2, '0')}:00` && 
+                block.day === dayIndex + 1
+            );
+            
+            if (timeSlot) {
+                const taskClass = timeSlot.type === 'break' ? 'timeblock-break' : `timeblock-task timeblock-task-${timeSlot.type}`;
+                html += `
+                    <div class="timeblock-cell">
+                        <div class="${taskClass}">
+                            <div class="timeblock-task-title">${escapeHtml(timeSlot.title)}</div>
+                            <div class="timeblock-task-time">${timeSlot.type === 'break' ? 'Descanso' : timeSlot.duration + 'min'}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += '<div class="timeblock-cell"></div>';
+            }
+        });
+    });
+    
+    grid.innerHTML = html;
+}
+
+function updateTimeBlockingStats(totalPlannedMinutes) {
+    const totalHours = Math.floor(totalPlannedMinutes / 60);
+    const totalMinutes = totalPlannedMinutes % 60;
+    
+    document.getElementById('totalPlannedTime').textContent = `${totalHours}h ${totalMinutes}m`;
+    document.getElementById('totalTasksCount').textContent = timeBlocks.filter(b => b.type !== 'break').length;
+    
+    // Calculate focus time percentage (assuming 8-hour workday = 480 minutes)
+    const focusPercentage = Math.min(Math.round((totalPlannedMinutes / 480) * 100), 100);
+    document.getElementById('focusTimePercent').textContent = `${focusPercentage}%`;
+}
+
+function clearTimeBlocking() {
+    timeBlocks = [];
+    renderTimeBlocking();
+    updateTimeBlockingStats(0);
+    showNotification('🗑️ Time blocking limpiado');
+}
+
+// Pomodoro Timer Functions
+let pomodoroInterval = null;
+let pomodoroTimeLeft = 25 * 60;
+let pomodoroWorkDuration = 25;
+let pomodoroBreakDuration = 5;
+let pomodoroIsRunning = false;
+let pomodoroIsBreak = false;
+let pomodoroCompletedToday = 0;
+let pomodoroTotalSecondsToday = 0;
+let pomodoroCurrentStreak = 0;
+let pomodoroSelectedTaskId = null;
+
+function initPomodoro() {
+    loadPomodoroStats();
+    updatePomodoroDisplay();
+    populatePomodoroTaskSelect();
+}
+
+function loadPomodoroStats() {
+    const today = new Date().toDateString();
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    const todayStats = stats[today] || { completed: 0, seconds: 0 };
+    
+    pomodoroCompletedToday = todayStats.completed;
+    pomodoroTotalSecondsToday = todayStats.seconds;
+    
+    // Load streak
+    pomodoroCurrentStreak = calculatePomodoroStreak();
+}
+
+function calculatePomodoroStreak() {
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    let streak = 0;
+    const today = new Date();
+    
+    for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toDateString();
+        
+        if (stats[dateStr] && stats[dateStr].completed > 0) {
+            streak++;
+        } else if (i === 0) {
+            // Today doesn't count as missed yet
+            continue;
+        } else {
+            break;
+        }
+    }
+    
+    return streak;
+}
+
+function populatePomodoroTaskSelect() {
+    const select = document.getElementById('pomodoroTaskSelect');
+    if (!select) return;
+    
+    const relevantTasks = [...tasks.filter(t => !t.completed), ...kanbanTasks.filter(t => t.status !== 'done')];
+    
+    select.innerHTML = '<option value="">Elige una tarea...</option>';
+    relevantTasks.forEach(task => {
+        select.innerHTML += `<option value="${task.id}">${escapeHtml(task.title)}</option>`;
+    });
+    
+    select.onchange = function() {
+        pomodoroSelectedTaskId = this.value;
+        const task = relevantTasks.find(t => t.id === parseInt(this.value));
+        document.getElementById('pomodoroTaskTitle').textContent = task ? task.title : 'Selecciona una tarea';
+    };
+}
+
+function togglePomodoro() {
+    if (pomodoroIsRunning) {
+        pausePomodoro();
+    } else {
+        startPomodoro();
+    }
+}
+
+function startPomodoro() {
+    pomodoroIsRunning = true;
+    document.getElementById('pomodoroStartBtn').style.display = 'none';
+    document.getElementById('pomodoroPauseBtn').style.display = 'flex';
+    
+    // Request wake lock for timer
+    requestWakeLock();
+    
+    pomodoroInterval = setInterval(() => {
+        pomodoroTimeLeft--;
+        updatePomodoroDisplay();
+        
+        if (pomodoroTimeLeft <= 0) {
+            completePomodoroSession();
+        }
+    }, 1000);
+}
+
+function pausePomodoro() {
+    pomodoroIsRunning = false;
+    clearInterval(pomodoroInterval);
+    document.getElementById('pomodoroStartBtn').style.display = 'flex';
+    document.getElementById('pomodoroPauseBtn').style.display = 'none';
+    releaseWakeLock();
+}
+
+function resetPomodoro() {
+    pausePomodoro();
+    pomodoroIsBreak = false;
+    pomodoroTimeLeft = pomodoroWorkDuration * 60;
+    updatePomodoroDisplay();
+    document.getElementById('sessionType').textContent = 'Trabajo';
+}
+
+function completePomodoroSession() {
+    pausePomodoro();
+    
+    if (!pomodoroIsBreak) {
+        // Work session completed
+        pomodoroCompletedToday++;
+        pomodoroTotalSecondsToday += pomodoroWorkDuration * 60;
+        
+        // Save stats
+        const today = new Date().toDateString();
+        const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+        stats[today] = { completed: pomodoroCompletedToday, seconds: pomodoroTotalSecondsToday };
+        localStorage.setItem('pomodoroStats', JSON.stringify(stats));
+        
+        // Update current streak
+        pomodoroCurrentStreak = calculatePomodoroStreak();
+        updatePomodoroStats();
+        
+        // Play completion sound
+        playAlarmSound();
+        
+        // Switch to break
+        pomodoroIsBreak = true;
+        pomodoroTimeLeft = pomodoroBreakDuration * 60;
+        document.getElementById('sessionType').textContent = 'Descanso';
+        showNotification('🍅 ¡Pomodoro completado! Time for a break.');
+        
+        // Auto-start break (optional)
+        if (confirm('¿Iniciar descanso automáticamente?')) {
+            startPomodoro();
+        }
+    } else {
+        // Break completed
+        pomodoroIsBreak = false;
+        pomodoroTimeLeft = pomodoroWorkDuration * 60;
+        document.getElementById('sessionType').textContent = 'Trabajo';
+        showNotification('⏰ Descanso terminado. ¡Listo para otro pomodoro?');
+    }
+    
+    updatePomodoroDisplay();
+}
+
+function updatePomodoroDisplay() {
+    const minutes = Math.floor(pomodoroTimeLeft / 60);
+    const seconds = pomodoroTimeLeft % 60;
+    document.getElementById('pomodoroTimer').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    updatePomodoroStats();
+}
+
+function updatePomodoroStats() {
+    document.getElementById('todayPomodoros').textContent = pomodoroCompletedToday;
+    
+    const hours = Math.floor(pomodoroTotalSecondsToday / 3600);
+    const minutes = Math.floor((pomodoroTotalSecondsToday % 3600) / 60);
+    document.getElementById('todayFocusTime').textContent = `${hours}h ${minutes}m`;
+    
+    document.getElementById('currentStreak').textContent = pomodoroCurrentStreak;
+}
+
+function setPomodoroDuration(minutes) {
+    pomodoroWorkDuration = minutes;
+    localStorage.setItem('pomodoroWorkDuration', minutes);
+    
+    document.querySelectorAll('.duration-btn[data-duration]').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.duration) === minutes);
+    });
+    
+    if (!pomodoroIsRunning && !pomodoroIsBreak) {
+        pomodoroTimeLeft = minutes * 60;
+        updatePomodoroDisplay();
+    }
+}
+
+function setBreakDuration(minutes) {
+    pomodoroBreakDuration = minutes;
+    localStorage.setItem('pomodoroBreakDuration', minutes);
+    
+    document.querySelectorAll('.duration-btn[data-break]').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.break) === minutes);
+    });
+    
+    if (pomodoroIsBreak && !pomodoroIsRunning) {
+        pomodoroTimeLeft = minutes * 60;
+        updatePomodoroDisplay();
+    }
+}
+
+// Energy Management Functions
+let energyLogs = [];
+
+function initEnergyManagement() {
+    loadEnergyLogs();
+    renderEnergyChart();
+    generateEnergyInsights();
+    generateEnergyRecommendations();
+}
+
+function loadEnergyLogs() {
+    energyLogs = JSON.parse(localStorage.getItem('energyLogs')) || [];
+}
+
+function saveEnergyLogs() {
+    localStorage.setItem('energyLogs', JSON.stringify(energyLogs));
+}
+
+function logEnergyLevel() {
+    const energyLevel = prompt('¿Cómo está tu energía actual? (1-5)', '3');
+    const level = parseInt(energyLevel);
+    
+    if (level >= 1 && level <= 5) {
+        const now = new Date();
+        const hour = now.getHours();
+        
+        energyLogs.push({
+            level: level,
+            hour: hour,
+            timestamp: now.toISOString(),
+            mood: null // Could add mood tracking later
+        });
+        
+        saveEnergyLogs();
+        renderEnergyChart();
+        generateEnergyInsights();
+        showNotification(`⚡ Energía registrada: ${level}/5`);
+    }
+}
+
+function renderEnergyChart() {
+    const container = document.getElementById('energyChart');
+    if (!container) return;
+    
+    // Group by hour and calculate average
+    const hourlyAverages = {};
+    const timeSlots = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    
+    timeSlots.forEach((slot, index) => {
+        const hour = index + 6;
+        const relevantLogs = energyLogs.filter(log => log.hour === hour);
+        
+        if (relevantLogs.length > 0) {
+            const avg = relevantLogs.reduce((sum, log) => sum + log.level, 0) / relevantLogs.length;
+            hourlyAverages[hour] = avg;
+        }
+    });
+    
+    let html = '<div class="energy-timeline">';
+    html += '<h3>📊 Tu Patrón de Energía (Promedio)</h3>';
+    
+    timeSlots.forEach((slot, index) => {
+        const hour = index + 6;
+        const avgLevel = hourlyAverages[hour] || 0;
+        const percentage = avgLevel * 20;
+        const levelClass = avgLevel <= 2 ? 'low' : avgLevel <= 3.5 ? 'medium' : 'high';
+        
+        html += `
+            <div class="energy-row">
+                <div class="energy-time">${slot}</div>
+                <div class="energy-bar-container">
+                    <div class="energy-bar ${levelClass}" style="width: ${percentage}%"></div>
+                </div>
+                <div class="energy-value">${avgLevel > 0 ? avgLevel.toFixed(1) : '-'}</div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function generateEnergyInsights() {
+    if (energyLogs.length < 5) {
+        // Not enough data
+        document.getElementById('bestMorning').textContent = 'Necesitas más registros';
+        document.getElementById('bestAfternoon').textContent = 'Necesitas más registros';
+        document.getElementById('complexTasksTime').textContent = '--';
+        document.getElementById('lightTasksTime').textContent = '--';
+        return;
+    }
+    
+    // Calculate best times
+    const morningLogs = energyLogs.filter(log => log.hour >= 6 && log.hour < 12);
+    const afternoonLogs = energyLogs.filter(log => log.hour >= 12 && log.hour < 18);
+    
+    const morningAvg = morningLogs.length > 0 
+        ? morningLogs.reduce((sum, log) => sum + log.level, 0) / morningLogs.length 
+        : 0;
+    
+    const afternoonAvg = afternoonLogs.length > 0 
+        ? afternoonLogs.reduce((sum, log) => sum + log.level, 0) / afternoonLogs.length 
+        : 0;
+    
+    // Find best morning and afternoon hours
+    const findBestHour = (start, end) => {
+        let bestHour = start;
+        let bestAvg = 0;
+        
+        for (let h = start; h < end; h++) {
+            const hourLogs = energyLogs.filter(log => log.hour === h);
+            if (hourLogs.length > 0) {
+                const avg = hourLogs.reduce((sum, log) => sum + log.level, 0) / hourLogs.length;
+                if (avg > bestAvg) {
+                    bestAvg = avg;
+                    bestHour = h;
+                }
+            }
+        }
+        
+        return { hour: bestHour, avg: bestAvg };
+    };
+    
+    const bestMorning = findBestHour(6, 12);
+    const bestAfternoon = findBestHour(12, 18);
+    
+    document.getElementById('bestMorning').textContent = 
+        bestMorning.avg > 0 ? `${bestMorning.hour}:00 - ${bestMorning.hour + 2}:00` : 'Sin datos';
+    document.getElementById('bestAfternoon').textContent = 
+        bestAfternoon.avg > 0 ? `${bestAfternoon.hour}:00 - ${bestAfternoon.hour + 2}:00` : 'Sin datos';
+    
+    // Suggest task types
+    if (morningAvg > afternoonAvg) {
+        document.getElementById('complexTasksTime').textContent = 'Mañana';
+        document.getElementById('lightTasksTime').textContent = 'Tarde';
+    } else {
+        document.getElementById('complexTasksTime').textContent = 'Tarde';
+        document.getElementById('lightTasksTime').textContent = 'Mañana';
+    }
+}
+
+function generateEnergyRecommendations() {
+    const container = document.getElementById('energyRecommendations');
+    if (!container) return;
+    
+    const currentHour = new Date().getHours();
+    const recentLogs = energyLogs.filter(log => {
+        const logHour = new Date(log.timestamp).getHours();
+        return logHour === currentHour;
+    });
+    
+    const currentAvg = recentLogs.length > 0 
+        ? recentLogs.reduce((sum, log) => sum + log.level, 0) / recentLogs.length 
+        : 3;
+    
+    let recommendations = [];
+    
+    if (currentAvg <= 2) {
+        recommendations = [
+            {
+                icon: '☕',
+                title: 'Toma un descanso',
+                content: 'Tu energía está baja. Considera tomar un café corto o hacer una pausa de 10 minutos.'
+            },
+            {
+                icon: '🚶',
+                title: 'Movimiento ligero',
+                content: 'Un paseo corto de 5 minutos puede ayudar a aumentar tu nivel de energía.'
+            },
+            {
+                icon: '📝',
+                title: 'Tareas ligeras ahora',
+                content: 'Guarda las tareas complejas para cuando tu energía sea mayor.'
+            }
+        ];
+    } else if (currentAvg >= 4) {
+        recommendations = [
+            {
+                icon: '🎯',
+                title: 'Es tu momento pico',
+                content: '¡Aprovecha! Este es el mejor momento para tareas que requieren concentración.'
+            },
+            {
+                icon: '🧠',
+                title: 'Retos importantes',
+                content: 'Ideal para trabajar en proyectos difíciles o tomar decisiones importantes.'
+            }
+        ];
+    } else {
+        recommendations = [
+            {
+                icon: '⚖️',
+                title: 'Buen equilibrio',
+                content: 'Tu energía está en un nivel moderado. Continúa con tu trabajo regular.'
+            },
+            {
+                icon: '📋',
+                title: 'Revisa tu lista',
+                content: 'Un buen momento para organizar y priorizar tus tareas del día.'
+            }
+        ];
+    }
+    
+    let html = '';
+    recommendations.forEach(rec => {
+        html += `
+            <div class="recommendation-item">
+                <div class="recommendation-icon">${rec.icon}</div>
+                <div class="recommendation-content">
+                    <h4>${rec.title}</h4>
+                    <p>${rec.content}</p>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
 }
 
 function moveKanban(id, e) {
@@ -1601,6 +2298,28 @@ function toggleTheme() {
     const isDark = document.body.classList.contains('dark');
     localStorage.setItem('darkMode', isDark);
     document.getElementById('themeText').textContent = isDark ? 'Claro' : 'Oscuro';
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (sidebar.classList.contains('active')) {
+        closeMobileSidebar();
+    } else {
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebar.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = ''; // Restore scrolling
 }
 
 function testAlarmSound() {
