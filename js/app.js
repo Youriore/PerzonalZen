@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
     renderAll();
     startTimerLoop();
+    initNotifications();
 
     if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark');
@@ -182,13 +183,21 @@ function switchView(viewId) {
     // Show selected view
     const view = document.getElementById(`${viewId}-view`);
     if (view) {
-        view.style.display = viewId === 'dashboard' ? 'grid' : 'block';
+        // Special display modes for different views
+        if (viewId === 'dashboard') {
+            view.style.display = 'grid';
+        } else if (viewId === 'focus') {
+            view.style.display = 'flex';
+        } else {
+            view.style.display = 'block';
+        }
+        
+        // Initialize/refresh each view
         if (viewId === 'dashboard') {
             renderKanban();
-            // updateStats(); // Removed
         } else if (viewId === 'calendar') {
             renderCalendar();
-        } else if (viewId === 'habits') {
+        } else if (viewId === 'habits' || viewId === 'habitsFull') {
             renderHabits();
         } else if (viewId === 'schedule') {
             if (typeof renderSchedule === 'function') renderSchedule();
@@ -198,6 +207,8 @@ function switchView(viewId) {
             initPomodoro();
         } else if (viewId === 'energy') {
             initEnergyManagement();
+        } else if (viewId === 'stats') {
+            loadStats();
         }
     }
 
@@ -646,12 +657,19 @@ function navigateCalendar(direction) {
 }
 
 function renderCalendar() {
-    const grid = document.getElementById('calendarGrid');
-    const periodLabel = document.getElementById('currentPeriod');
+    // Render in both calendar locations
+    const grids = [
+        { grid: document.getElementById('calendarGrid'), period: document.getElementById('currentPeriod') },
+        { grid: document.getElementById('calendarGridFull'), period: document.getElementById('currentPeriodFull') }
+    ];
 
-    if (calendarView === 'month') renderMonthCalendar(grid, periodLabel);
-    else if (calendarView === 'week') renderWeekCalendar(grid, periodLabel);
-    else if (calendarView === 'day') renderDayCalendar(grid, periodLabel);
+    grids.forEach(({ grid, period }) => {
+        if (grid && period) {
+            if (calendarView === 'month') renderMonthCalendar(grid, period);
+            else if (calendarView === 'week') renderWeekCalendar(grid, period);
+            else if (calendarView === 'day') renderDayCalendar(grid, period);
+        }
+    });
 }
 
 function renderMonthCalendar(grid, periodLabel) {
@@ -817,15 +835,21 @@ function formatDateShort(date) {
 }
 
 function renderHabits() {
-    const container = document.getElementById('habitsList');
+    const containers = [
+        document.getElementById('habitsList'),
+        document.getElementById('habitsListFull')
+    ];
+
+    const container = containers[0];
 
     if (habits.length === 0) {
-        container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">◉</div>
-                        <p>No hay hábitos. ¡Crea tu primer hábito!</p>
-                    </div>
-                `;
+        const emptyHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">◉</div>
+                <p>No hay hábitos. ¡Crea tu primer hábito!</p>
+            </div>
+        `;
+        containers.forEach(c => { if (c) c.innerHTML = emptyHTML; });
         return;
     }
 
@@ -860,7 +884,7 @@ function renderHabits() {
         const streak = calculateStreak(habit);
 
         return `
-                    <div class="habit-card">
+            <div class="habit-card">
                 <div class="habit-header" style="display:flex; justify-content:space-between; align-items:center;">
                     <div class="habit-title">
                         ${escapeHtml(habit.title)}
@@ -869,18 +893,24 @@ function renderHabits() {
                     <button class="btn-icon delete" onclick="deleteHabit(${habit.id})" style="width:24px;height:24px;font-size:1.2rem;display:flex;align-items:center;justify-content:center;">×</button>
                 </div>
                 <div class="habit-desc">${habit.description || ''}</div>
-                        <div class="habit-days">
-                            ${weekDays.map(d => `
-                                <div class="habit-day ${d.completed ? 'completed' : ''} ${d.isToday ? 'today' : ''}"
-                                     onclick="toggleHabitForDate(${habit.id}, '${d.dateStr}')"
-                                     title="${fullDayNames[d.day]}">
-                                    ${d.label}
-                                </div>
-                            `).join('')}
+                <div class="habit-days">
+                    ${weekDays.map(d => `
+                        <div class="habit-day ${d.completed ? 'completed' : ''} ${d.isToday ? 'today' : ''}"
+                             onclick="toggleHabitForDate(${habit.id}, '${d.dateStr}')"
+                             title="${fullDayNames[d.day]}">
+                            ${d.label}
                         </div>
-                    </div>
-                `;
+                    `).join('')}
+                </div>
+            </div>
+        `;
     }).join('');
+
+    // Also render to full habits view
+    const fullContainer = document.getElementById('habitsListFull');
+    if (fullContainer) {
+        fullContainer.innerHTML = container.innerHTML;
+    }
 }
 
 function calculateStreak(habit) {
@@ -1890,6 +1920,361 @@ function setBreakDuration(minutes) {
 // Energy Management Functions
 let energyLogs = [];
 
+function loadStats() {
+    const totalTasks = tasks.length + kanbanTasks.length;
+    const completedTasks = tasks.filter(t => t.completed).length + kanbanTasks.filter(t => t.status === 'done').length;
+    const pendingTasks = tasks.filter(t => !t.completed).length + kanbanTasks.filter(t => t.status === 'pending').length;
+    const inProgressTasks = kanbanTasks.filter(t => t.status === 'progress').length;
+    const productivityRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    // Calculate weekly trends
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    
+    const weekTasks = tasks.filter(t => t.createdAt && t.createdAt >= weekAgoStr).length;
+    const weekCompleted = tasks.filter(t => t.completed && t.completedAt && t.completedAt >= weekAgoStr).length;
+    
+    // Calculate average time
+    const tasksWithTime = kanbanTasks.filter(t => t.time && t.time > 0);
+    const avgTime = tasksWithTime.length > 0 
+        ? Math.round(tasksWithTime.reduce((sum, t) => sum + t.time, 0) / tasksWithTime.length)
+        : 0;
+    
+    // Calculate habits stats
+    let habitsCompleted = 0;
+    habits.forEach(h => {
+        if (h.completedDates) {
+            habitsCompleted += h.completedDates.length;
+        }
+    });
+    
+    const weekHabits = habits.reduce((sum, h) => {
+        if (h.completedDates) {
+            return sum + h.completedDates.filter(d => d >= weekAgoStr).length;
+        }
+        return sum;
+    }, 0);
+    
+    // Calculate pomodoro stats
+    const pomodorosToday = pomodoroCompletedToday || 0;
+    const pomodoroTime = Math.round((pomodorosToday * (pomodoroWorkDuration || 25)) / 60);
+    
+    // Calculate score (gamification)
+    const score = (completedTasks * 10) + (habitsCompleted * 5) + (pomodorosToday * 3) + (productivityRate);
+    let level = 'Principiante';
+    if (score >= 500) level = 'Maestro';
+    else if (score >= 300) level = 'Avanzado';
+    else if (score >= 150) level = 'Intermedio';
+    else if (score >= 50) level = 'Aprendiz';
+    
+    // Calculate streak
+    let bestStreak = 0;
+    habits.forEach(h => {
+        const streak = calculateStreak(h);
+        if (streak > bestStreak) bestStreak = streak;
+    });
+    
+    // Update stats display
+    const totalStatEl = document.getElementById('totalTasksStat');
+    const completedStatEl = document.getElementById('completedTasksStat');
+    const productivityEl = document.getElementById('productivityRate');
+    const streakEl = document.getElementById('currentStreakStat');
+    const avgTimeEl = document.getElementById('avgTimeStat');
+    const habitsEl = document.getElementById('habitsCompletedStat');
+    const pomodoroEl = document.getElementById('pomodoroStat');
+    const scoreEl = document.getElementById('scoreStat');
+    
+    // Trends
+    const totalTrendEl = document.getElementById('totalTasksTrend');
+    const completedTrendEl = document.getElementById('completedTrend');
+    const productivityTrendEl = document.getElementById('productivityTrend');
+    const streakTrendEl = document.getElementById('streakTrend');
+    const timeTrendEl = document.getElementById('timeTrend');
+    const habitsTrendEl = document.getElementById('habitsTrend');
+    const pomodoroTrendEl = document.getElementById('pomodoroTrend');
+    const scoreTrendEl = document.getElementById('scoreTrend');
+    
+    if (totalStatEl) totalStatEl.textContent = totalTasks;
+    if (completedStatEl) completedStatEl.textContent = completedTasks;
+    if (productivityEl) productivityEl.textContent = productivityRate + '%';
+    if (streakEl) streakEl.textContent = pomodoroCurrentStreak || bestStreak;
+    if (avgTimeEl) avgTimeEl.textContent = avgTime > 0 ? avgTime + 'min' : '-';
+    if (habitsEl) habitsEl.textContent = habitsCompleted;
+    if (pomodoroEl) pomodoroEl.textContent = pomodorosToday;
+    if (scoreEl) scoreEl.textContent = score;
+    
+    if (totalTrendEl) totalTrendEl.textContent = `+${weekTasks} esta semana`;
+    if (completedTrendEl) completedTrendEl.textContent = `+${weekCompleted} esta semana`;
+    if (productivityTrendEl) productivityTrendEl.textContent = `${productivityRate}% vs semana anterior`;
+    if (streakTrendEl) streakTrendEl.textContent = `Mejor racha: ${bestStreak}`;
+    if (timeTrendEl) timeTrendEl.textContent = avgTime > 0 ? `~${Math.round(avgTime / 60 * 10) / 10}h total` : 'Sin datos';
+    if (habitsTrendEl) habitsTrendEl.textContent = `+${weekHabits} esta semana`;
+    if (pomodoroTrendEl) pomodoroTrendEl.textContent = `${pomodoroTime}h de enfoque`;
+    if (scoreTrendEl) scoreTrendEl.textContent = `Nivel: ${level}`;
+    
+    // Render Charts
+    renderTasksByStatusChart(completedTasks, pendingTasks, inProgressTasks);
+    renderWeeklyProductivityChart();
+    renderRecentTasksChart();
+    renderHabitsTrendChart();
+    renderPriorityChart();
+}
+
+// Chart instances
+let tasksByStatusChart = null;
+let weeklyProductivityChart = null;
+let recentTasksChart = null;
+let habitsTrendChart = null;
+let priorityChart = null;
+let statsPeriod = 'week';
+
+function setStatsPeriod(period, btn) {
+    statsPeriod = period;
+    document.querySelectorAll('.stats-period-selector .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadStats();
+}
+
+function renderTasksByStatusChart(completed, pending, inProgress) {
+    const ctx = document.getElementById('tasksByStatusChart');
+    if (!ctx) return;
+    
+    if (tasksByStatusChart) {
+        tasksByStatusChart.destroy();
+    }
+    
+    tasksByStatusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completadas', 'Pendientes', 'En Proceso'],
+            datasets: [{
+                data: [completed, pending, inProgress],
+                backgroundColor: [
+                    '#10B981',
+                    '#F59E0B',
+                    '#6366F1'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function renderWeeklyProductivityChart() {
+    const ctx = document.getElementById('weeklyProductivityChart');
+    if (!ctx) return;
+    
+    if (weeklyProductivityChart) {
+        weeklyProductivityChart.destroy();
+    }
+    
+    // Get last 7 days data
+    const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const data = [0, 0, 0, 0, 0, 0, 0]; // Default values
+    
+    // Get pomodoro stats for last 7 days
+    const pomodoroStats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toDateString();
+        if (pomodoroStats[dateStr]) {
+            data[6 - i] = pomodoroStats[dateStr].completed || 0;
+        }
+    }
+    
+    weeklyProductivityChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Pomodoros',
+                data: data,
+                backgroundColor: '#6366F1',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderRecentTasksChart() {
+    const ctx = document.getElementById('recentTasksChart');
+    if (!ctx) return;
+    
+    if (recentTasksChart) {
+        recentTasksChart.destroy();
+    }
+    
+    // Get recent tasks (last 10)
+    const recentTasks = [...tasks, ...kanbanTasks]
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 10)
+        .reverse();
+    
+    const labels = recentTasks.map(t => t.title.substring(0, 15) + (t.title.length > 15 ? '...' : ''));
+    const data = recentTasks.map(t => t.completed || t.status === 'done' ? 1 : 0);
+    
+    recentTasksChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Estado',
+                data: data,
+                backgroundColor: data.map(v => v === 1 ? '#10B981' : '#F59E0B'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 1,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            return value === 0 ? 'Pendiente' : value === 1 ? 'Completada' : '';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderHabitsTrendChart() {
+    const ctx = document.getElementById('habitsTrendChart');
+    if (!ctx) return;
+    
+    if (habitsTrendChart) {
+        habitsTrendChart.destroy();
+    }
+    
+    // Get last 7 days data
+    const days = [];
+    const data = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        days.push(['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]);
+        
+        let completed = 0;
+        habits.forEach(h => {
+            if (h.completedDates && h.completedDates.includes(dStr)) {
+                completed++;
+            }
+        });
+        data.push(completed);
+    }
+    
+    habitsTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Hábitos completados',
+                data: data,
+                borderColor: '#A78BFA',
+                backgroundColor: 'rgba(167, 139, 250, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#A78BFA',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderPriorityChart() {
+    const ctx = document.getElementById('priorityChart');
+    if (!ctx) return;
+    
+    if (priorityChart) {
+        priorityChart.destroy();
+    }
+    
+    const alta = [...tasks, ...kanbanTasks].filter(t => t.priority === 'alta').length;
+    const media = [...tasks, ...kanbanTasks].filter(t => t.priority === 'media').length;
+    const baja = [...tasks, ...kanbanTasks].filter(t => t.priority === 'baja').length;
+    
+    priorityChart = new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+            labels: ['Alta', 'Media', 'Baja'],
+            datasets: [{
+                data: [alta, media, baja],
+                backgroundColor: [
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(16, 185, 129, 0.7)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
 function initEnergyManagement() {
     loadEnergyLogs();
     renderEnergyChart();
@@ -2291,6 +2676,184 @@ function renderTasks() {
                     </div>
                 </div>
             `).join('');
+}
+
+let notifications = [];
+let notificationTimers = [];
+
+function initNotifications() {
+    // Request permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // Load saved notifications
+    const saved = localStorage.getItem('zenNotifications');
+    if (saved) {
+        notifications = JSON.parse(saved);
+        renderNotifications();
+    }
+    
+    // Schedule task reminders
+    scheduleTaskReminders();
+}
+
+function toggleNotifications() {
+    const dropdown = document.getElementById('notificationsDropdown');
+    dropdown.classList.toggle('active');
+}
+
+function addNotification(type, title, message, icon = '🔔') {
+    const notification = {
+        id: Date.now(),
+        type: type,
+        title: title,
+        message: message,
+        icon: icon,
+        time: new Date().toISOString(),
+        read: false
+    };
+    
+    notifications.unshift(notification);
+    
+    // Keep only last 50 notifications
+    if (notifications.length > 50) {
+        notifications = notifications.slice(0, 50);
+    }
+    
+    saveNotifications();
+    renderNotifications();
+    
+    // Show browser notification if permitted
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+            body: message,
+            icon: icon
+        });
+    }
+}
+
+function saveNotifications() {
+    localStorage.setItem('zenNotifications', JSON.stringify(notifications));
+}
+
+function renderNotifications() {
+    const list = document.getElementById('notificationsList');
+    const badge = document.getElementById('notificationBadge');
+    
+    if (!list) return;
+    
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    if (badge) {
+        badge.textContent = unreadCount;
+        badge.style.display = unreadCount > 0 ? 'inline' : 'none';
+    }
+    
+    if (notifications.length === 0) {
+        list.innerHTML = '<div class="notification-empty">No hay notificaciones</div>';
+        return;
+    }
+    
+    list.innerHTML = notifications.map(n => {
+        const timeAgo = getTimeAgo(n.time);
+        return `
+            <div class="notification-item ${n.type} ${n.read ? '' : 'unread'}" onclick="markAsRead(${n.id})">
+                <div class="notification-icon">${n.icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${n.title}</div>
+                    <div class="notification-message">${n.message}</div>
+                    <div class="notification-time">${timeAgo}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function markAsRead(id) {
+    const notif = notifications.find(n => n.id === id);
+    if (notif) {
+        notif.read = true;
+        saveNotifications();
+        renderNotifications();
+    }
+}
+
+function clearAllNotifications() {
+    notifications = [];
+    saveNotifications();
+    renderNotifications();
+}
+
+function getTimeAgo(dateStr) {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'Hace un momento';
+    if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`;
+    if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} h`;
+    return `Hace ${Math.floor(seconds / 86400)} días`;
+}
+
+function scheduleTaskReminders() {
+    // Clear existing timers
+    notificationTimers.forEach(t => clearTimeout(t));
+    notificationTimers = [];
+    
+    // Check every minute for upcoming tasks
+    const checkTasks = () => {
+        const now = new Date();
+        
+        tasks.forEach(task => {
+            if (task.completed || !task.date || !task.time) return;
+            
+            const taskDateTime = new Date(`${task.date}T${task.time}`);
+            const diffMs = taskDateTime - now;
+            const diffMinutes = Math.floor(diffMs / 60000);
+            
+            // Notify 15 minutes before
+            if (diffMinutes > 0 && diffMinutes <= 15 && diffMinutes > 14) {
+                addNotification(
+                    'task-reminder',
+                    '⏰ Recordatorio de tarea',
+                    `${task.title} comienza en ${diffMinutes} minutos`,
+                    '⏰'
+                );
+            }
+            
+            // Notify when due
+            if (diffMinutes <= 0 && diffMinutes > -1) {
+                addNotification(
+                    'task-reminder',
+                    '⚠️ Tarea pendiente',
+                    `${task.title} está pendiente`,
+                    '⚠️'
+                );
+            }
+        });
+        
+        // Check habits for daily reminder
+        const hour = now.getHours();
+        if (hour === 9) { // Morning reminder
+            const today = now.toISOString().split('T')[0];
+            habits.forEach(h => {
+                if (h.days && h.days[now.getDay()] && (!h.completedDates || !h.completedDates.includes(today))) {
+                    addNotification(
+                        'habit-reminder',
+                        '🎯 Recordatorio de hábito',
+                        `No has completado "${h.title}" hoy`,
+                        '🎯'
+                    );
+                }
+            });
+        }
+    };
+    
+    // Check immediately then every minute
+    checkTasks();
+    const timer = setInterval(checkTasks, 60000);
+    notificationTimers.push(timer);
 }
 
 function toggleTheme() {
