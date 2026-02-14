@@ -177,6 +177,9 @@ function saveData() {
 }
 
 function switchView(viewId) {
+    // Close mobile sidebar when navigating
+    closeMobileSidebar();
+    
     // Hide all views
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
 
@@ -1793,6 +1796,111 @@ function togglePomodoro() {
         startPomodoro();
     }
 }
+
+// Focus Mode Timer Functions
+let focusTimerRunning = false;
+let focusTimerInterval = null;
+let focusTimeLeft = 25 * 60;
+
+function toggleTimer() {
+    const playIcon = document.getElementById('focusPlayIcon');
+    const btnText = document.getElementById('focusBtnText');
+    
+    if (focusTimerRunning) {
+        // Pause timer
+        clearInterval(focusTimerInterval);
+        focusTimerRunning = false;
+        if (playIcon) playIcon.textContent = '▶';
+        if (btnText) btnText.textContent = 'Reanudar';
+    } else {
+        // Start timer
+        focusTimerRunning = true;
+        if (playIcon) playIcon.textContent = '⏸';
+        if (btnText) btnText.textContent = 'Pausar';
+        
+        focusTimerInterval = setInterval(() => {
+            focusTimeLeft--;
+            updateFocusTimerDisplay();
+            
+            if (focusTimeLeft <= 0) {
+                clearInterval(focusTimerInterval);
+                focusTimerRunning = false;
+                if (playIcon) playIcon.textContent = '▶';
+                if (btnText) btnText.textContent = 'Iniciar';
+                sendNotification('¡Tiempo completado!', 'Tu sesión de enfoque ha terminado');
+                focusTimeLeft = 25 * 60;
+                updateFocusTimerDisplay();
+            }
+        }, 1000);
+    }
+}
+
+function stopTimer() {
+    clearInterval(focusTimerInterval);
+    focusTimerRunning = false;
+    focusTimeLeft = 25 * 60;
+    
+    const playIcon = document.getElementById('focusPlayIcon');
+    const btnText = document.getElementById('focusBtnText');
+    
+    if (playIcon) playIcon.textContent = '▶';
+    if (btnText) btnText.textContent = 'Iniciar';
+    
+    updateFocusTimerDisplay();
+}
+
+function updateFocusTimerDisplay() {
+    const display = document.getElementById('focusTimerDisplay');
+    if (display) {
+        const minutes = Math.floor(focusTimeLeft / 60);
+        const seconds = focusTimeLeft % 60;
+        display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+function exitFocusMode() {
+    // Stop timer if running
+    if (focusTimerRunning) {
+        clearInterval(focusTimerInterval);
+        focusTimerRunning = false;
+    }
+    
+    // Switch back to dashboard
+    switchView('dashboard');
+}
+
+function completeFocusTask() {
+    // Mark current focus task as complete
+    if (focusTaskId) {
+        const task = tasks.find(t => t.id === focusTaskId);
+        if (task) {
+            task.completed = true;
+            task.completedAt = new Date().toISOString();
+            saveData();
+            renderTasks();
+        }
+        
+        const kanbanTask = kanbanTasks.find(t => t.id === focusTaskId);
+        if (kanbanTask) {
+            kanbanTask.status = 'done';
+            saveData();
+            renderKanban();
+        }
+    }
+    
+    // Stop timer
+    if (focusTimerRunning) {
+        clearInterval(focusTimerInterval);
+        focusTimerRunning = false;
+    }
+    
+    sendNotification('¡Tarea completada!', 'Has completado tu tarea en modo enfoque');
+    
+    // Switch back to dashboard
+    switchView('dashboard');
+}
+
+let focusTaskId = null;
 
 function startPomodoro() {
     pomodoroIsRunning = true;
