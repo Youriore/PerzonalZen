@@ -3,7 +3,9 @@ let tasks = JSON.parse(localStorage.getItem('zenTasks')) || [];
 let kanbanTasks = JSON.parse(localStorage.getItem('zenKanban')) || [];
 let habits = JSON.parse(localStorage.getItem('zenHabits')) || [];
 let scheduleItems = JSON.parse(localStorage.getItem('zenSchedule')) || [];
+let completedTasksHistory = JSON.parse(localStorage.getItem('zenCompletedHistory')) || [];
 let currentFilter = 'all';
+let draggedTaskId = null; // Para drag and drop
 let selectedPriority = 'media';
 let editingId = null;
 let editingKanbanId = null;
@@ -19,8 +21,571 @@ let customAudioData = null;
 let audioVolume = 0.8;
 let pendingDelete = null; // Store item to delete
 
+// Screen time tracking
+let screenTimeStart = Date.now();
+let screenTimePaused = false;
+let screenTimeTotal = 0;
+let screenTimeWarningShown = false;
+const SCREEN_TIME_WARNING = 2 * 60 * 60 * 1000; // 2 hours in ms
+const SCREEN_TIME_DANGER = 4 * 60 * 60 * 1000; // 4 hours in ms
+
+// Voice functions
+let speechSynthesisSupported = 'speechSynthesis' in window;
+let speechRecognitionSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+let availableVoices = [];
+
+// Load voices with better quality detection
+function loadVoices() {
+    availableVoices = window.speechSynthesis.getVoices();
+    return availableVoices;
+}
+
+// Initialize voices - some browsers need this event
+if (speechSynthesisSupported) {
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices(); // Initial load
+}
+
+// Get the best natural voice available
+function getBestSpanishVoice() {
+    if (availableVoices.length === 0) {
+        loadVoices();
+    }
+    
+    // Priority order for natural voices:
+    // 1. Google neural Spanish voices
+    // 2. Premium Spanish voices  
+    // 3. Any Spanish neural voice
+    // 4. Any Spanish voice
+    
+    const spanishVoices = availableVoices.filter(v => v.lang.startsWith('es'));
+    
+    // Look for neural/premium voices first
+    const neuralVoice = spanishVoices.find(v => 
+        v.name.includes('Google') || 
+        v.name.includes('Neural') ||
+        v.name.includes('Premium') ||
+        v.name.includes('Natural') ||
+        v.name.includes('Enhanced')
+    );
+    
+    if (neuralVoice) return neuralVoice;
+    
+    // Fall back to any Spanish voice
+    return spanishVoices[0];
+}
+
+// Text-to-Speech - Hablar texto con voz natural
+// Try Coqui first for ultra-natural voice, fallback to browser
+function speakText(text, lang = 'es-ES') {
+    // Use browser TTS with best voice (most reliable)
+    if (!speechSynthesisSupported) {
+        console.log('Speech synthesis not supported');
+        return;
+    }
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.9; // Slightly slower for clearer speech
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    // Use the best available natural voice
+    const bestVoice = getBestSpanishVoice();
+    if (bestVoice) {
+        utterance.voice = bestVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+// Ultra-natural voice using Coqui TTS (when available)
+async function speakWithNaturalVoice(text) {
+    try {
+        // Using Coqui XTTS v2 model - very natural
+        const response = await fetch('https://api-inference.huggingface.co/models/coqui/xtts-v2', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer free',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                inputs: text,
+                options: { language: 'es' }
+            })
+        });
+        
+        if (response.ok) {
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            await audio.play();
+            return true;
+        }
+    } catch (e) {
+        console.log('Natural voice API unavailable');
+    }
+    return false;
+}
+
+// Speech Recognition - Reconocimiento de voz para input
+let recognition = null;
+let isListening = false;
+let currentVoiceInputCallback = null;
+
+function initSpeechRecognition() {
+    if (!speechRecognitionSupported) return false;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false; // Solo procesar cuando termine de hablar
+    recognition.lang = 'es-ES';
+    
+    recognition.onstart = function() {
+        isListening = true;
+        console.log('Speech recognition started');
+    };
+    
+    recognition.onend = function() {
+        isListening = false;
+        console.log('Speech recognition ended');
+    };
+    
+    recognition.onerror = function(event) {
+        isListening = false;
+        console.log('Speech recognition error:', event.error);
+    };
+    
+    recognition.onresult = function(event) {
+        let finalTranscript = '';
+        
+        // Solo procesar resultados finales (cuando termine de hablar)
+        for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
+        }
+        
+        if (currentVoiceInputCallback && finalTranscript) {
+            currentVoiceInputCallback(finalTranscript.trim());
+        }
+    };
+    
+    return true;
+}
+
+function startVoiceInput(callback) {
+    if (!speechRecognitionSupported) {
+        showNotification('Reconocimiento de voz no disponible en este navegador');
+        return false;
+    }
+    
+    if (!recognition) {
+        initSpeechRecognition();
+    }
+    
+    if (!recognition) {
+        showNotification('No se pudo inicializar el reconocimiento de voz');
+        return false;
+    }
+    
+    currentVoiceInputCallback = callback;
+    
+    try {
+        recognition.start();
+        return true;
+    } catch (e) {
+        console.log('Error starting recognition:', e);
+        return false;
+    }
+}
+
+function stopVoiceInput() {
+    if (recognition && isListening) {
+        recognition.stop();
+    }
+    currentVoiceInputCallback = null;
+}
+
+// Voice Command - Global voice commands
+let voiceCommandActive = false;
+
+function toggleVoiceCommand() {
+    const btn = document.getElementById('voiceCommandBtn');
+    const icon = document.getElementById('voiceCommandIcon');
+    
+    if (voiceCommandActive) {
+        stopVoiceInput();
+        voiceCommandActive = false;
+        if (btn) {
+            btn.classList.remove('listening');
+            icon.textContent = 'mic';
+        }
+    } else {
+        // No speak when starting - just listen
+        const success = startVoiceInput((text) => {
+            if (text) {
+                processVoiceCommand(text);
+            }
+            
+            // Reset button
+            voiceCommandActive = false;
+            if (btn) {
+                btn.classList.remove('listening');
+                icon.textContent = 'mic';
+            }
+        });
+        
+        if (success) {
+            voiceCommandActive = true;
+            if (btn) {
+                btn.classList.add('listening');
+                icon.textContent = 'mic';
+            }
+        } else {
+            // Only speak if voice recognition is not available
+            speakText('El reconocimiento de voz no está disponible');
+        }
+    }
+}
+
+function processVoiceCommand(text) {
+    const command = text.toLowerCase().trim();
+    console.log('Voice command:', command);
+    
+    // Extract the actual item name by removing command words
+    let itemName = '';
+    let type = null;
+    
+    // Task commands
+    if (command.includes('tarea') || command.includes('pendiente') || command.includes('tarea por hacer')) {
+        type = 'task';
+        // Remove common words to get the task name
+        itemName = command
+            .replace(/añade(r)?/g, '')
+            .replace(/agrega(r)?/g, '')
+            .replace(/nueva?/g, '')
+            .replace(/tarea/g, '')
+            .replace(/pendiente/g, '')
+            .replace(/por hacer/g, '')
+            .replace(/crea(r)?/g, '')
+            .replace(/una/g, '')
+            .replace(/un/g, '')
+            .replace(/de/g, '')
+            .replace(/para/g, '')
+            .replace(/que/g, '')
+            .replace(/necesito/g, '')
+            .replace(/hacer/g, '')
+            .trim();
+    }
+    // Habit commands
+    else if (command.includes('hábito') || command.includes('habito') || command.includes('hábitos') || command.includes('habitos')) {
+        type = 'habit';
+        itemName = command
+            .replace(/añade(r)?/g, '')
+            .replace(/agrega(r)?/g, '')
+            .replace(/nueva?/g, '')
+            .replace(/hábito/g, '')
+            .replace(/habito/g, '')
+            .replace(/hábitos/g, '')
+            .replace(/habitos/g, '')
+            .replace(/crea(r)?/g, '')
+            .replace(/una/g, '')
+            .replace(/un/g, '')
+            .replace(/de/g, '')
+            .replace(/para/g, '')
+            .replace(/hacer/g, '')
+            .trim();
+    }
+    // Kanban commands
+    else if (command.includes('kanban') || command.includes('tablero') || command.includes('to do')) {
+        type = 'kanban';
+        itemName = command
+            .replace(/añade(r)?/g, '')
+            .replace(/agrega(r)?/g, '')
+            .replace(/nueva?/g, '')
+            .replace(/kanban/g, '')
+            .replace(/tablero/g, '')
+            .replace(/to do/g, '')
+            .replace(/crea(r)?/g, '')
+            .replace(/al/g, '')
+            .replace(/en/g, '')
+            .trim();
+    }
+    // Calendar/Event commands
+    else if (command.includes('evento') || command.includes('cita') || command.includes('reunión') || command.includes('reunion') || command.includes('calendario')) {
+        type = 'calendar';
+        itemName = command
+            .replace(/añade(r)?/g, '')
+            .replace(/agrega(r)?/g, '')
+            .replace(/nueva?/g, '')
+            .replace(/evento/g, '')
+            .replace(/cita/g, '')
+            .replace(/reunión/g, '')
+            .replace(/reunion/g, '')
+            .replace(/calendario/g, '')
+            .replace(/para el/g, '')
+            .replace(/para/g, '')
+            .replace(/crea(r)?/g, '')
+            .trim();
+    }
+    // Default: ask user what they want
+    else {
+        showNotification('No entendí. Di: "agregar tarea", "agregar hábito", o "agregar al kanban"');
+        // No speak on error - just show notification
+        return;
+    }
+    
+    // Clean up the name
+    itemName = itemName.replace(/^\s+|\s+$/g, '');
+    
+    if (itemName.length < 2) {
+        showNotification('No entendí el nombre. Intenta de nuevo.');
+        return;
+    }
+    
+    // Capitalize first letter
+    itemName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
+    
+    // Create the item based on type
+    if (type === 'task') {
+        createTaskByVoice(itemName);
+    } else if (type === 'habit') {
+        createHabitByVoice(itemName);
+    } else if (type === 'kanban') {
+        createKanbanByVoice(itemName);
+    } else if (type === 'calendar') {
+        createCalendarEventByVoice(itemName);
+    }
+}
+
+function createTaskByVoice(title) {
+    const task = {
+        id: Date.now(),
+        title: title,
+        description: '',
+        priority: 'media',
+        tags: [],
+        date: new Date().toISOString().split('T')[0],
+        completed: false,
+        subtasks: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    tasks.push(task);
+    saveData();
+    renderTasks();
+    
+    showNotification(`Tarea creada: ${title}`);
+    speakText(`Tarea "${title}" creada exitosamente`);
+}
+
+function createHabitByVoice(name) {
+    const habit = {
+        id: Date.now(),
+        name: name,
+        description: '',
+        days: [true, true, true, true, true, true, true], // All days
+        createdAt: new Date().toISOString(),
+        streak: 0,
+        completedDates: []
+    };
+    
+    habits.push(habit);
+    saveData();
+    renderHabits();
+    
+    showNotification(`Hábito creado: ${name}`);
+    speakText(`Hábito "${name}" creado exitosamente`);
+}
+
+function createKanbanByVoice(title) {
+    const kanbanTask = {
+        id: Date.now(),
+        title: title,
+        description: '',
+        status: 'pending',
+        time: 30, // Default 30 minutes
+        elapsed: 0,
+        priority: 'media',
+        tags: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    kanbanTasks.push(kanbanTask);
+    saveData();
+    renderKanban();
+    
+    showNotification(`Tarea Kanban creada: ${title}`);
+    speakText(`Tarea "${title}" creada en el kanban`);
+}
+
+function createCalendarEventByVoice(title) {
+    const event = {
+        id: Date.now(),
+        title: title,
+        subject: title,
+        startTime: '09:00',
+        endTime: '10:00',
+        date: new Date().toISOString().split('T')[0],
+        color: '#6366F1',
+        travelBefore: 0,
+        travelAfter: 0,
+        createdAt: new Date().toISOString()
+    };
+    
+    scheduleItems.push(event);
+    saveData();
+    renderCalendar();
+    
+    showNotification(`Evento creado: ${title}`);
+    speakText(`Evento "${title}" creado en el calendario`);
+}
+
+// Load screen time from localStorage
+function loadScreenTime() {
+    const saved = JSON.parse(localStorage.getItem('screenTimeData') || '{}');
+    if (saved.total) {
+        screenTimeTotal = saved.total;
+        screenTimePaused = saved.paused || false;
+        screenTimeStart = saved.paused ? Date.now() : Date.now();
+        if (!screenTimePaused) {
+            screenTimeStart = saved.lastStart || Date.now();
+        }
+    }
+}
+
+// Save screen time to localStorage
+function saveScreenTime() {
+    const data = {
+        total: screenTimeTotal,
+        paused: screenTimePaused,
+        lastStart: screenTimePaused ? Date.now() : screenTimeStart
+    };
+    localStorage.setItem('screenTimeData', JSON.stringify(data));
+}
+
+// Toggle screen time pause
+function toggleScreenTimePause() {
+    const tracker = document.getElementById('screenTimeTracker');
+    const btn = document.getElementById('screenTimePauseBtn');
+    
+    if (screenTimePaused) {
+        // Reanudar
+        screenTimeTotal += Date.now() - screenTimeStart;
+        screenTimePaused = false;
+        screenTimeStart = Date.now();
+        if (btn) btn.innerHTML = '<span class="material-icons">pause</span>';
+        if (tracker) tracker.classList.remove('paused');
+    } else {
+        // Pausar
+        screenTimeTotal += Date.now() - screenTimeStart;
+        screenTimePaused = true;
+        if (btn) btn.innerHTML = '<span class="material-icons">play_arrow</span>';
+        if (tracker) tracker.classList.add('paused');
+    }
+    saveScreenTime();
+}
+
+// Reset screen time
+function resetScreenTime() {
+    screenTimeStart = Date.now();
+    screenTimeTotal = 0;
+    screenTimePaused = false;
+    screenTimeWarningShown = false;
+    saveScreenTime();
+    updateScreenTime();
+    showNotification('Tiempo en pantalla reiniciado');
+}
+
 const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const fullDayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// Toggle Sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
+        
+        if (mainContent) {
+            mainContent.classList.toggle('sidebar-collapsed');
+        }
+        
+        // Save state
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    }
+}
+
+// Screen Time Tracking
+function updateScreenTime() {
+    let elapsed;
+    if (screenTimePaused) {
+        elapsed = screenTimeTotal;
+    } else {
+        elapsed = screenTimeTotal + (Date.now() - screenTimeStart);
+    }
+    
+    const hours = Math.floor(elapsed / 3600000);
+    const minutes = Math.floor((elapsed % 3600000) / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    
+    const display = document.getElementById('screenTimeDisplay');
+    if (display) {
+        display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Update warning state
+        const tracker = document.getElementById('screenTimeTracker');
+        if (tracker) {
+            tracker.classList.remove('warning', 'danger');
+            
+            if (elapsed >= SCREEN_TIME_DANGER) {
+                tracker.classList.add('danger');
+                if (!screenTimeWarningShown && !screenTimePaused) {
+                    sendNotification('⚠️ ¡Llevas mucho tiempo en pantalla!', 'Considera tomar un descanso');
+                    screenTimeWarningShown = true;
+                }
+            } else if (elapsed >= SCREEN_TIME_WARNING) {
+                tracker.classList.add('warning');
+            }
+        }
+    }
+}
+
+// Update header time
+function updateHeaderTime() {
+    const now = new Date();
+    const hourEl = document.getElementById('headerHour');
+    const dateEl = document.getElementById('headerDate');
+    
+    if (hourEl) {
+        hourEl.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    if (dateEl) {
+        const options = { weekday: 'short', day: 'numeric', month: 'short' };
+        dateEl.textContent = now.toLocaleDateString('es-ES', options);
+    }
+}
+
+// Load saved sidebar state
+function loadSidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    
+    if (sidebar && collapsed) {
+        sidebar.classList.add('collapsed');
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.classList.add('sidebar-collapsed');
+        }
+    }
+}
 
 // Registrar Service Worker para notificaciones en segundo plano
 if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
@@ -51,9 +616,21 @@ let wakeLock = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
+    loadScreenTime(); // Cargar tiempo de pantalla guardado
+    loadVoices(); // Load natural voices
     renderAll();
     startTimerLoop();
     initNotifications();
+    setupKanbanDragAndDrop();
+    loadSidebarState();
+    
+    // Start screen time tracking (every second)
+    setInterval(updateScreenTime, 1000);
+    updateScreenTime();
+    
+    // Start header time updates (every minute)
+    setInterval(updateHeaderTime, 60000);
+    updateHeaderTime();
 
     if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark');
@@ -381,11 +958,11 @@ function checkPendingAlarms() {
         if (task.status === 'progress' && task.endTime && !task.alarmTriggered) {
             // Combine tasks and schedule items
             const allEvents = [
-                ...dayTasks.map(t => ({ ...t, type: 'task' })),
+                ...tasks.map(t => ({ ...t, type: 'task' })),
             ];
 
             // Add schedule items + travel
-            relevantScheduleItems.forEach(s => {
+            scheduleItems.forEach(s => {
                 // Main Event
                 allEvents.push({ ...s, type: 'schedule', title: s.subject, timeStart: s.startTime });
 
@@ -492,7 +1069,10 @@ function triggerAlarm(task) {
 
     playAlarmSound();
     sendNotification('¡Tiempo Completado!', `La tarea "${task.title}" ha terminado`);
-
+    
+    // Voice announcement
+    speakText(`¡La tarea ${task.title} ha completado su tiempo!`);
+    
     // Vibración más intensa y persistente para móviles
     if (navigator.vibrate) {
         // Patrón de vibración que se repite varias veces
@@ -557,6 +1137,9 @@ function sendNotification(title, body) {
             new Notification(title, options);
         }
     }
+    
+    // Voice announcement
+    speakText(`${title}. ${body}`);
 }
 
 function renderAll() {
@@ -597,38 +1180,77 @@ function renderKanban() {
     document.getElementById('kanbanDone').innerHTML = done.length > 0 
         ? done.map(t => createKanbanItem(t)).join('') 
         : emptyState;
+    
+    // Configurar event listeners programáticamente para drag and drop
+    setupKanbanDragAndDrop();
 }
 
 function createKanbanItem(task) {
     let timerHtml = '';
+    let deletionHtml = '';
+    let cardClass = '';
+    
+    // Check if scheduled for deletion
+    if (task.scheduledForDeletion) {
+        cardClass = 'scheduled-for-deletion';
+        deletionHtml = `
+            <div class="deletion-countdown">
+                <span id="deletion-timer-${task.id}">Calculando...</span>
+                <button class="btn-cancel-delete" onclick="event.stopPropagation(); cancelAutoDelete(${task.id})">Cancelar</button>
+            </div>
+        `;
+    }
 
     if (task.status === 'progress') {
         const totalSeconds = task.time * 60;
         const elapsed = task.elapsed || 0;
         const percent = (elapsed / totalSeconds) * 100;
+        const remaining = Math.max(0, totalSeconds - elapsed);
 
         let timerClass = '';
-        if (percent >= 100) timerClass = 'danger';
-        else if (percent >= 80) timerClass = 'warning';
+        let progressColor = 'var(--accent)';
+        
+        if (percent >= 100) {
+            timerClass = 'danger timer-completed';
+            progressColor = 'var(--success)';
+        } else if (percent >= 80) {
+            timerClass = 'warning';
+            progressColor = 'var(--warning)';
+        }
 
         timerHtml = `
-                    <div class="timer-display ${timerClass}">
-                        <span>◐</span>
-                        <span id="timer-${task.id}">${formatTime(elapsed)}</span>
-                        <span>/ ${formatTime(totalSeconds)}</span>
-                    </div>
-                `;
+            <div class="timer-display ${timerClass}">
+                <div class="timer-progress-circle" style="--progress: ${percent}; --color: ${progressColor}">
+                    <span class="timer-icon">◐</span>
+                </div>
+                <div class="timer-info">
+                    <span id="timer-${task.id}" class="timer-time">${formatTime(elapsed)}</span>
+                    <span class="timer-remaining">-${formatTime(remaining)}</span>
+                </div>
+            </div>
+        `;
     } else if (task.status === 'done') {
-        timerHtml = `<span style="color: var(--success);">✔ Completada</span>`;
+        const timeSpent = task.elapsed || 0;
+        const estimated = (task.time || 0) * 60;
+        const efficiency = estimated > 0 ? Math.round((timeSpent / estimated) * 100) : 100;
+        
+        timerHtml = `
+            <div class="task-completed-badge">
+                <span class="check-icon">✓</span>
+                <span class="completed-text">Completada</span>
+                <span class="efficiency-badge">${efficiency}%</span>
+            </div>
+        `;
     } else {
         const timeDisplay = task.time ? `${task.time}min` : '∞';
-        timerHtml = `<span>⏱ ${timeDisplay}</span>`;
+        timerHtml = `<div class="timer-pending"><span>⏱</span> ${timeDisplay}</div>`;
     }
 
     return `
-                <div class="kanban-task" draggable="true" ondragstart="dragStart(event, ${task.id})" ondragend="dragEnd(event)" 
+                <div class="kanban-task ${cardClass}" draggable="true" data-task-id="${task.id}"
                      onclick="editKanban(${task.id})" ondblclick="quickEditKanban(${task.id}, event)">
                     <div class="kanban-task-title">${escapeHtml(task.title)}</div>
+                    ${deletionHtml}
                     <div class="kanban-task-meta">
                         ${timerHtml}
                         <div class="kanban-actions" onclick="event.stopPropagation()">
@@ -1085,7 +1707,12 @@ function createTaskForm() {
                 <form onsubmit="handleTaskSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">Título</label>
-                        <input type="text" id="taskTitle" class="form-input" placeholder="¿Qué necesitas hacer?" required>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="taskTitle" class="form-input" placeholder="¿Qué necesitas hacer?" required style="flex: 1;">
+                            <button type="button" class="voice-input-btn" onclick="handleVoiceInput('taskTitle')" title="Agregar por voz">
+                                <span class="material-icons">mic</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1148,7 +1775,12 @@ function createKanbanForm() {
                 <form onsubmit="handleKanbanSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">Título</label>
-                        <input type="text" id="kanbanTitle" class="form-input" placeholder="¿Qué tarea vas a hacer?" required>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="kanbanTitle" class="form-input" placeholder="¿Qué tarea vas a hacer?" required style="flex: 1;">
+                            <button type="button" class="voice-input-btn" onclick="handleVoiceInput('kanbanTitle')" title="Agregar por voz">
+                                <span class="material-icons">mic</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1166,7 +1798,12 @@ function createHabitForm() {
                 <form onsubmit="handleHabitSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">Nombre del Hábito</label>
-                        <input type="text" id="habitTitle" class="form-input" placeholder="Ej: Ejercicio, Meditación, Lectura..." required>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="habitTitle" class="form-input" placeholder="Ej: Ejercicio, Meditación, Lectura..." required style="flex: 1;">
+                            <button type="button" class="voice-input-btn" onclick="handleVoiceInput('habitTitle')" title="Agregar por voz">
+                                <span class="material-icons">mic</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1276,6 +1913,31 @@ function createAudioSettingsForm() {
 function openCalendarModal(date) {
     selectedCalendarDate = date;
     openModal('calendar', date);
+}
+
+function handleVoiceInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const btn = input.parentElement.querySelector('.voice-input-btn');
+    if (btn) {
+        btn.classList.add('listening');
+    }
+    
+    const success = startVoiceInput((transcript) => {
+        if (transcript) {
+            input.value = transcript;
+            // Trigger input event for any listeners
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (btn) {
+            btn.classList.remove('listening');
+        }
+    });
+    
+    if (!success && btn) {
+        btn.classList.remove('listening');
+    }
 }
 
 function closeModal(e) {
@@ -2616,6 +3278,12 @@ function moveKanban(id, e) {
         requestWakeLock();
     } else if (task.status === 'progress') {
         task.status = 'done';
+        // Verificar si el timer terminó para activar auto-delete
+        const totalSeconds = task.time * 60;
+        if (task.elapsed >= totalSeconds) {
+            // Timer completado, iniciar auto-delete
+            setTimeout(() => scheduleAutoDelete(task.id), 100);
+        }
         // Limpiar timestamps
         task.startTime = null;
         task.endTime = null;
@@ -2642,6 +3310,67 @@ function dragStart(e, id) {
 function dragEnd(e) {
     e.target.classList.remove('dragging');
     document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+    // No limpiamos draggedTaskId aquí porque drop puede no ser llamado si el drop falla
+}
+
+// Configurar event listeners programáticamente para drag and drop
+function setupKanbanDragAndDrop() {
+    // Los inline handlers ya deberían funcionar, pero por seguridad configuramos también programáticamente
+    document.querySelectorAll('.kanban-task').forEach(task => {
+        // Extraer ID del atributo ondragstart
+        const ondragstartAttr = task.getAttribute('ondragstart');
+        if (ondragstartAttr) {
+            const match = ondragstartAttr.match(/dragStart\(event,\s*(\d+)\)/);
+            if (match) {
+                const id = parseInt(match[1]);
+                task.dataset.taskId = id;
+                
+                // Configurar event listeners programáticos
+                task.removeEventListener('dragstart', handleTaskDragStart);
+                task.addEventListener('dragstart', handleTaskDragStart);
+                
+                task.removeEventListener('dragend', dragEnd);
+                task.addEventListener('dragend', dragEnd);
+            }
+        }
+    });
+    
+    // Configurar event listeners para las columnas
+    const columns = [
+        { id: 'colPending', status: 'pending' },
+        { id: 'colProgress', status: 'progress' },
+        { id: 'colDone', status: 'done' }
+    ];
+    
+    columns.forEach(({ id, status }) => {
+        const col = document.getElementById(id);
+        if (col) {
+            col.removeEventListener('dragover', allowDrop);
+            col.addEventListener('dragover', allowDrop);
+            
+            col.removeEventListener('dragenter', dragEnter);
+            col.addEventListener('dragenter', dragEnter);
+            
+            col.removeEventListener('dragleave', dragLeave);
+            col.addEventListener('dragleave', dragLeave);
+            
+            col.removeEventListener('drop', handleColumnDrop);
+            col.addEventListener('drop', (e) => handleColumnDrop(e, status));
+        }
+    });
+}
+
+function handleTaskDragStart(e) {
+    const taskId = parseInt(e.currentTarget.dataset.taskId);
+    draggedTaskId = taskId;
+    dragStart(e, taskId);
+}
+
+function handleColumnDrop(e, status) {
+    if (!draggedTaskId) {
+        draggedTaskId = parseInt(e.dataTransfer.getData('text/plain'));
+    }
+    drop(e, status);
 }
 
 function allowDrop(e) {
@@ -2662,7 +3391,11 @@ function dragLeave(e) {
 
 function drop(e, status) {
     e.preventDefault();
-    const id = parseInt(e.dataTransfer.getData('text/plain'));
+    let id = parseInt(e.dataTransfer.getData('text/plain'));
+    // Si el dataTransfer no funciona, usar la variable global
+    if (isNaN(id) && draggedTaskId) {
+        id = draggedTaskId;
+    }
     const task = kanbanTasks.find(t => t.id === id);
 
     if (task) {
@@ -2677,6 +3410,17 @@ function drop(e, status) {
             task.elapsed = 0;
             task.alarmTriggered = false;
             requestWakeLock();
+        } else if (status === 'done' && previousStatus === 'progress') {
+            // Verificar si el timer terminó
+            const totalSeconds = task.time * 60;
+            if (task.elapsed >= totalSeconds) {
+                // Timer completado, iniciar auto-delete
+                setTimeout(() => scheduleAutoDelete(task.id), 100);
+            }
+            // Limpiar timestamps
+            task.startTime = null;
+            task.endTime = null;
+            releaseWakeLock();
         } else if (status !== 'progress' && previousStatus === 'progress') {
             // Limpiar timestamps si sale de progreso
             task.startTime = null;
@@ -2688,6 +3432,9 @@ function drop(e, status) {
         renderKanban();
         showNotification(`Tarea movida a ${getStatusLabel(status)}`);
     }
+    
+    // Limpiar variable global
+    draggedTaskId = null;
 
     document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
 }
