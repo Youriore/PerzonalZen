@@ -132,27 +132,10 @@
             <div class="header-center">
                 <div class="screen-time-tracker" id="screenTimeTracker">
                     <span class="material-icons">laptop</span>
-                    <span class="time-label">Pantalla:</span>
-                    <span class="time-value" id="screenTimeDisplay">00:00:00</span>
-                    <button class="screen-time-btn" id="screenTimePauseBtn" onclick="toggleScreenTimePause()"
-                        title="Pausar/Reanudar">
-                        <span class="material-icons">pause</span>
-                    </button>
-                    <button class="screen-time-btn reset" onclick="resetScreenTime()" title="Reiniciar">
-                        <span class="material-icons">refresh</span>
-                    </button>
+                    <span class="time-value" id="screenTimeDisplay">00:00</span>
                 </div>
-                <button class="voice-command-btn" id="voiceCommandBtn" onclick="toggleVoiceCommand()"
-                    title="Comandos de voz">
-                    <span class="material-icons" id="voiceCommandIcon">mic</span>
-                    <span class="voice-command-text">Hablar</span>
-                </button>
             </div>
             <div class="header-right">
-                <div class="current-time" id="currentTime">
-                    <span class="time-hour" id="headerHour">00:00</span>
-                    <span class="time-date" id="headerDate">Cargando...</span>
-                </div>
                 <button class="header-btn" onclick="openSettingsModal()" title="Configuración">
                     <span class="material-icons">settings</span>
                 </button>
@@ -247,20 +230,20 @@
                         <div class="kanban-column kanban-pending" id="colPending" data-status="pending">
                             <div class="kanban-header"><span>⏳</span> Por Hacer</div>
                             <div id="kanbanPending"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban')">+ Agregar tarea</button>
+                            <button class="add-task-btn" onclick="openModal('kanban', )"> Agregar tarea</button>
                         </div>
                         <!-- Columna: En Proceso -->
                         <div class="kanban-column kanban-progress" id="colProgress" data-status="progress">
                             <div class="kanban-header"><span>▶</span> En Proceso</div>
                             <div id="kanbanProgress"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban', 'progress')">+ Agregar
+                            <button class="add-task-btn" onclick="openModal('kanban', 'progress')">Agregar
                                 tarea</button>
                         </div>
                         <!-- Columna: Completadas -->
                         <div class="kanban-column kanban-done" id="colDone" data-status="done">
                             <div class="kanban-header"><span>✔</span> Completadas</div>
                             <div id="kanbanDone"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban', 'done')">+ Agregar tarea</button>
+                            <button class="add-task-btn" onclick="openModal('kanban', 'done')">Agregar tarea</button>
                         </div>
                     </div>
                 </div>
@@ -690,6 +673,10 @@
     </main>
     </div>
 
+    <!-- Floating Action Buttons -->
+    <button class="fab voice-fab" id="voiceCommandBtn" onclick="toggleVoiceCommand()" title="Comandos de voz">
+        <span class="material-icons" id="voiceCommandIcon">mic</span>
+    </button>
     <button class="fab" onclick="openModal('task')">+</button>
 
     <!-- Modal -->

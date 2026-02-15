@@ -449,20 +449,37 @@ function createCalendarEventByVoice(title) {
 // Load screen time from localStorage
 function loadScreenTime() {
     const saved = JSON.parse(localStorage.getItem('screenTimeData') || '{}');
-    if (saved.total) {
+    if (saved.total !== undefined) {
         screenTimeTotal = saved.total;
         screenTimePaused = saved.paused || false;
-        screenTimeStart = saved.paused ? Date.now() : Date.now();
-        if (!screenTimePaused) {
-            screenTimeStart = saved.lastStart || Date.now();
+        
+        if (screenTimePaused) {
+            // If paused, start from where we left off (no running timer)
+            screenTimeStart = Date.now();
+        } else {
+            // If not paused, calculate the elapsed time since last save
+            // screenTimeTotal contains time accumulated up to last save
+            // We need to add the time since then
+            const now = Date.now();
+            if (saved.lastStart) {
+                const additionalTime = now - saved.lastStart;
+                screenTimeTotal += additionalTime;
+            }
+            screenTimeStart = now;
         }
     }
 }
 
 // Save screen time to localStorage
 function saveScreenTime() {
+    // First, calculate current total if not paused
+    let currentTotal = screenTimeTotal;
+    if (!screenTimePaused) {
+        currentTotal += Date.now() - screenTimeStart;
+    }
+    
     const data = {
-        total: screenTimeTotal,
+        total: currentTotal,
         paused: screenTimePaused,
         lastStart: screenTimePaused ? Date.now() : screenTimeStart
     };
@@ -627,6 +644,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start screen time tracking (every second)
     setInterval(updateScreenTime, 1000);
     updateScreenTime();
+    
+    // Auto-save screen time every 30 seconds (for browser close protection)
+    setInterval(saveScreenTime, 30000);
+    
+    // Save on page unload
+    window.addEventListener('beforeunload', saveScreenTime);
     
     // Start header time updates (every minute)
     setInterval(updateHeaderTime, 60000);

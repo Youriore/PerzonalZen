@@ -456,12 +456,81 @@ body {
 }
 
 @media (max-width: 768px) {
-    .voice-command-text {
+    /* Header mobile - minimal */
+    .app-header {
+        padding: 4px 6px;
+        gap: 3px;
+        min-height: 40px;
+    }
+    
+    .header-left {
+        gap: 4px;
+    }
+    
+    .sidebar-toggle {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+    }
+    
+    .header-logo .logo-icon {
+        font-size: 1.2rem;
+    }
+    
+    .header-logo .logo-text {
         display: none;
     }
-
-    .voice-command-btn {
-        padding: 8px 12px;
+    
+    .header-center {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .screen-time-tracker {
+        padding: 2px 4px;
+        font-size: 0.55rem;
+        border-radius: 6px;
+        gap: 2px;
+    }
+    
+    .screen-time-tracker .material-icons {
+        font-size: 0.6rem;
+    }
+    
+    .screen-time-tracker .time-label {
+        display: none;
+    }
+    
+    .screen-time-btn {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .screen-time-btn .material-icons {
+        font-size: 0.55rem;
+    }
+    
+    .header-right {
+        gap: 2px;
+    }
+    
+    .header-btn {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .header-btn .material-icons {
+        font-size: 0.9rem;
+    }
+    
+    .current-time {
+        display: none;
+    }
+    
+    /* Hide header in mobile when sidebar is open */
+    .sidebar.active + .main-content .app-header {
+        display: none;
     }
 }
 
@@ -2579,7 +2648,21 @@ body.dark .theme-toggle-header .material-icons {
 }
 
 .form-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     margin-bottom: 20px;
+}
+
+.form-group .week-days-selector {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+    gap: 8px;
 }
 
 .form-label {
@@ -2798,6 +2881,32 @@ body.dark .theme-toggle-header .material-icons {
 .fab:hover {
     transform: scale(1.1) rotate(90deg);
     box-shadow: 0 8px 20px rgba(46, 64, 87, 0.4);
+}
+
+/* Voice FAB */
+.voice-fab {
+    bottom: 100px;
+    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.voice-fab:hover {
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+}
+
+.voice-fab.listening {
+    background: linear-gradient(135deg, var(--danger) 0%, #F87171 100%);
+    animation: voiceFabPulse 1s ease-in-out infinite;
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes voiceFabPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.voice-fab .material-icons {
+    font-size: 1.5rem;
 }
 
 /* Notification */
@@ -3882,7 +3991,7 @@ html {
     opacity: 1;
     visibility: visible;
 }
-}
+
 
 @media (min-width: 769px) {
 
@@ -3995,7 +4104,7 @@ html {
 #sidebar.active~.bottom-nav {
     display: none;
 }
-}
+
 
 @media (min-width: 769px) {
     .sidebar-overlay {
