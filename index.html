@@ -124,15 +124,19 @@
                 <button class="sidebar-toggle" onclick="toggleSidebar()" title="Alternar Sidebar">
                     <span class="material-icons">menu</span>
                 </button>
-                <div class="header-logo">
-                    <span class="material-icons logo-icon">◉</span>
-                    <span class="logo-text">Zen Tasks</span>
-                </div>
+
             </div>
             <div class="header-center">
                 <div class="screen-time-tracker" id="screenTimeTracker">
                     <span class="material-icons">laptop</span>
                     <span class="time-value" id="screenTimeDisplay">00:00</span>
+                    <button class="st-btn" id="screenTimePauseBtn" onclick="toggleScreenTimePause()"
+                        title="Pausar/Reanudar">
+                        <span class="material-icons" id="pauseIcon">pause</span>
+                    </button>
+                    <button class="st-btn" onclick="resetScreenTime()" title="Reiniciar">
+                        <span class="material-icons">refresh</span>
+                    </button>
                 </div>
             </div>
             <div class="header-right">
@@ -176,31 +180,32 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
-        <!-- Mobile Header (Simplified) -->
-        <div id="mobile-header"
-            class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom d-md-none">
-            <div class="d-flex align-items-center">
-                <button class="menu-toggle" onclick="toggleMobileSidebar()">
-                    <span class="material-icons">menu</span>
+        <div class="page-shell">
+            <!-- Mobile Header (Simplified) -->
+            <div id="mobile-header"
+                class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom d-md-none">
+                <div class="d-flex align-items-center">
+                    <button class="menu-toggle" onclick="toggleMobileSidebar()">
+                        <span class="material-icons">menu</span>
+                    </button>
+                    <h1 class="h2 ms-2">Zen Tasks</h1>
+                </div>
+                <button class="theme-toggle-mobile btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
+                    <span class="material-icons" style="font-size: 1.2rem;">dark_mode</span>
                 </button>
-                <h1 class="h2 ms-2">Zen Tasks</h1>
             </div>
-            <button class="theme-toggle-mobile btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
-                <span class="material-icons" style="font-size: 1.2rem;">dark_mode</span>
-            </button>
-        </div>
 
-        <!-- Desktop Header (Hidden on Mobile) -->
-        <header class="main-header d-none d-md-flex">
-            <div class="header-left">
-                <h1>Tablero de Tareas</h1>
-            </div>
-        </header>
+            <!-- Desktop Header (Hidden on Mobile) -->
+            <header class="main-header d-none d-md-flex">
+                <div class="header-left">
+                    <h1>Tablero de Tareas</h1>
+                </div>
+            </header>
 
-        <!-- ============================================ -->
-        <!-- VISTA DASHBOARD (Principal) -->
-        <!-- ============================================ -->
-        <div id="dashboard-view" class="dashboard-grid view-section">
+            <!-- ============================================ -->
+            <!-- VISTA DASHBOARD (Principal) -->
+            <!-- ============================================ -->
+            <div id="dashboard-view" class="dashboard-grid view-section">
             <!-- Welcome Greeting Section -->
             <div class="welcome-container mb-4">
                 <div class="welcome-text">
@@ -380,29 +385,112 @@
         <!-- VISTA TIME BLOCKING -->
         <!-- ============================================ -->
         <div id="timeblocking-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>📅</span> Time Blocking - Planificación Inteligente</div>
-                    <div class="timeblocking-controls">
-                        <button class="btn-secondary" onclick="generateTimeBlocking()"><span>🎯</span> Generar
-                            Automático</button>
-                        <button class="btn-secondary" onclick="clearTimeBlocking()"><span>🗑️</span> Limpiar</button>
+            <div class="tb-container">
+                <div class="tb-header">
+                    <div class="tb-header-left">
+                        <h1 class="tb-title">Weekly Planner</h1>
+                    </div>
+                    <div class="tb-header-center">
+                        <button class="tb-nav-btn" onclick="navigateTBWeek(-1)">
+                            <span class="material-icons">chevron_left</span>
+                        </button>
+                        <div class="tb-week-label">
+                            <span class="material-icons">calendar_today</span>
+                            <span id="tbWeekLabel">Nov 18 - 24, 2023</span>
+                        </div>
+                        <button class="tb-nav-btn" onclick="navigateTBWeek(1)">
+                            <span class="material-icons">chevron_right</span>
+                        </button>
+                    </div>
+                    <div class="tb-header-right">
+                        <button class="tb-add-btn" onclick="generateTimeBlocking()">
+                            <span class="material-icons">add</span>
+                            Generar
+                        </button>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="timeblocking-grid" id="timeblockingGrid"></div>
-                    <div class="timeblocking-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">⏱ Tiempo Total Planificado:</span>
-                            <span class="stat-value" id="totalPlannedTime">0h 0m</span>
+
+                <div class="tb-main">
+                    <div class="tb-calendar-wrapper">
+                        <div class="tb-calendar-header">
+                            <div class="tb-time-gmt">GMT-5</div>
+                            <div class="tb-day-header" data-day="0">
+                                <div class="tb-day-name">Lun</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header" data-day="1">
+                                <div class="tb-day-name">Mar</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header" data-day="2">
+                                <div class="tb-day-name">Mié</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header" data-day="3">
+                                <div class="tb-day-name">Jue</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header" data-day="4">
+                                <div class="tb-day-name">Vie</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header tb-day-weekend" data-day="5">
+                                <div class="tb-day-name">Sáb</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
+                            <div class="tb-day-header tb-day-weekend" data-day="6">
+                                <div class="tb-day-name">Dom</div>
+                                <div class="tb-day-num">-</div>
+                            </div>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">📊 Tareas Programadas:</span>
-                            <span class="stat-value" id="totalTasksCount">0</span>
+
+                        <div class="tb-calendar-body">
+                            <div class="tb-time-column" id="tbTimeColumn"></div>
+                            <div class="tb-grid-lines" id="tbGridLines"></div>
+                            <div class="tb-current-time-line" id="tbCurrentTimeLine" style="display: none;">
+                                <div class="tb-current-dot"></div>
+                                <div class="tb-current-line"></div>
+                            </div>
+                            <div class="tb-blocks-container" id="tbBlocksContainer"></div>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">🎯 Foco Productivo:</span>
-                            <span class="stat-value" id="focusTimePercent">0%</span>
+                    </div>
+
+                    <div class="tb-sidebar">
+                        <div class="tb-backlog">
+                            <div class="tb-backlog-header">
+                                <h2>Pendientes</h2>
+                                <span class="tb-backlog-count" id="tbBacklogCount">0</span>
+                            </div>
+                            <p class="tb-backlog-hint">Arrastra al calendario</p>
+                            <div class="tb-backlog-list" id="tbBacklogList"></div>
+                        </div>
+
+                        <div class="tb-stats-card">
+                            <div class="tb-stats-header">
+                                <h2>Tiempo de Foco</h2>
+                                <span class="tb-stats-trend" id="tbStatsTrend">+0%</span>
+                            </div>
+                            <div class="tb-stats-main">
+                                <div class="tb-stats-hours" id="totalPlannedTime">0h</div>
+                                <div class="tb-stacks-chart">
+                                    <div class="tb-stack-bar" style="height: 40%"></div>
+                                    <div class="tb-stack-bar" style="height: 70%"></div>
+                                    <div class="tb-stack-bar" style="height: 50%"></div>
+                                    <div class="tb-stack-bar tb-stack-active" style="height: 100%"></div>
+                                </div>
+                            </div>
+                            <div class="tb-stats-footer">
+                                <div class="tb-stat-item">
+                                    <span class="tb-stat-icon">📊</span>
+                                    <span class="tb-stat-label">Tareas:</span>
+                                    <span class="tb-stat-value" id="totalTasksCount">0</span>
+                                </div>
+                                <div class="tb-stat-item">
+                                    <span class="tb-stat-icon">🎯</span>
+                                    <span class="tb-stat-label">Productividad:</span>
+                                    <span class="tb-stat-value" id="focusTimePercent">0%</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -670,8 +758,8 @@
                 </div>
             </div>
         </div>
+        </div>
     </main>
-    </div>
 
     <!-- Floating Action Buttons -->
     <button class="fab voice-fab" id="voiceCommandBtn" onclick="toggleVoiceCommand()" title="Comandos de voz">
@@ -712,6 +800,9 @@
                         <div class="settings-tab active" onclick="switchSettingsTab('general', this)">
                             <span>⚡</span> General
                         </div>
+                        <div class="settings-tab" onclick="switchSettingsTab('timeblocking', this)">
+                            <span>📅</span> Time Blocking
+                        </div>
                         <div class="settings-tab" onclick="switchSettingsTab('audio', this)">
                             <span>🔊</span> Audio
                         </div>
@@ -745,6 +836,23 @@
                                     <span id="animations-status">Activadas</span>
                                 </div>
                             </div>
+                        </div>
+                        <div id="settings-timeblocking" class="settings-section">
+                            <h3>Configuración de Time Blocking</h3>
+                            <div class="setting-item">
+                                <div class="setting-label">🌅 Hora de inicio</div>
+                                <div class="setting-description">Hora início de tu jornada laboral</div>
+                                <input type="time" id="tbStartTime" class="form-input" value="09:00"
+                                    style="width: 150px;">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">🌙 Hora de fin</div>
+                                <div class="setting-description">Hora fin de tu jornada laboral</div>
+                                <input type="time" id="tbEndTime" class="form-input" value="18:00"
+                                    style="width: 150px;">
+                            </div>
+                            <button class="btn-primary" onclick="saveTimeBlockingSettings()"
+                                style="margin-top: 16px;">Guardar</button>
                         </div>
                         <div id="settings-audio" class="settings-section">
                             <h3>Configuración de Audio</h3>

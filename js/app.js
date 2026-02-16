@@ -5,7 +5,7 @@ let habits = JSON.parse(localStorage.getItem('zenHabits')) || [];
 let scheduleItems = JSON.parse(localStorage.getItem('zenSchedule')) || [];
 let completedTasksHistory = JSON.parse(localStorage.getItem('zenCompletedHistory')) || [];
 let currentFilter = 'all';
-let draggedTaskId = null; // Para drag and drop
+let draggedTaskId = null;
 let selectedPriority = 'media';
 let editingId = null;
 let editingKanbanId = null;
@@ -13,6 +13,9 @@ let editingHabitId = null;
 let modalMode = 'task';
 let calendarView = 'month';
 let currentDate = new Date();
+let kanbanSearchTerm = '';
+let timeBlocks = [];
+let currentTBWeekStart = null;
 let selectedCalendarDate = null;
 let alarmAudio = null;
 let alarmInterval = null;
@@ -51,26 +54,26 @@ function getBestSpanishVoice() {
     if (availableVoices.length === 0) {
         loadVoices();
     }
-    
+
     // Priority order for natural voices:
     // 1. Google neural Spanish voices
     // 2. Premium Spanish voices  
     // 3. Any Spanish neural voice
     // 4. Any Spanish voice
-    
+
     const spanishVoices = availableVoices.filter(v => v.lang.startsWith('es'));
-    
+
     // Look for neural/premium voices first
-    const neuralVoice = spanishVoices.find(v => 
-        v.name.includes('Google') || 
+    const neuralVoice = spanishVoices.find(v =>
+        v.name.includes('Google') ||
         v.name.includes('Neural') ||
         v.name.includes('Premium') ||
         v.name.includes('Natural') ||
         v.name.includes('Enhanced')
     );
-    
+
     if (neuralVoice) return neuralVoice;
-    
+
     // Fall back to any Spanish voice
     return spanishVoices[0];
 }
@@ -83,22 +86,22 @@ function speakText(text, lang = 'es-ES') {
         console.log('Speech synthesis not supported');
         return;
     }
-    
+
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     utterance.rate = 0.9; // Slightly slower for clearer speech
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    
+
     // Use the best available natural voice
     const bestVoice = getBestSpanishVoice();
     if (bestVoice) {
         utterance.voice = bestVoice;
     }
-    
+
     window.speechSynthesis.speak(utterance);
 }
 
@@ -117,7 +120,7 @@ async function speakWithNaturalVoice(text) {
                 options: { language: 'es' }
             })
         });
-        
+
         if (response.ok) {
             const audioBlob = await response.blob();
             const audioUrl = URL.createObjectURL(audioBlob);
@@ -138,43 +141,56 @@ let currentVoiceInputCallback = null;
 
 function initSpeechRecognition() {
     if (!speechRecognitionSupported) return false;
-    
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false; // Solo procesar cuando termine de hablar
     recognition.lang = 'es-ES';
-    
-    recognition.onstart = function() {
+
+    recognition.onstart = function () {
         isListening = true;
         console.log('Speech recognition started');
     };
-    
-    recognition.onend = function() {
+
+    recognition.onend = function () {
         isListening = false;
         console.log('Speech recognition ended');
     };
-    
-    recognition.onerror = function(event) {
+
+    recognition.onerror = function (event) {
         isListening = false;
-        console.log('Speech recognition error:', event.error);
+        let message = 'Error en el reconocimiento de voz';
+        if (event && event.error) {
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                message = 'Permiso de micrófono denegado. Actívalo en los ajustes del navegador.';
+            } else if (event.error === 'no-speech') {
+                message = 'No se escuchó nada. Intenta hablar de nuevo.';
+            } else if (event.error === 'audio-capture') {
+                message = 'No se encontró micrófono disponible.';
+            } else if (event.error === 'network') {
+                message = 'Error de red en el reconocimiento de voz.';
+            }
+        }
+        showNotification(message);
+        console.log('Speech recognition error:', event && event.error);
     };
-    
-    recognition.onresult = function(event) {
+
+    recognition.onresult = function (event) {
         let finalTranscript = '';
-        
+
         // Solo procesar resultados finales (cuando termine de hablar)
         for (let i = 0; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
                 finalTranscript += event.results[i][0].transcript;
             }
         }
-        
+
         if (currentVoiceInputCallback && finalTranscript) {
             currentVoiceInputCallback(finalTranscript.trim());
         }
     };
-    
+
     return true;
 }
 
@@ -183,18 +199,18 @@ function startVoiceInput(callback) {
         showNotification('Reconocimiento de voz no disponible en este navegador');
         return false;
     }
-    
+
     if (!recognition) {
         initSpeechRecognition();
     }
-    
+
     if (!recognition) {
         showNotification('No se pudo inicializar el reconocimiento de voz');
         return false;
     }
-    
+
     currentVoiceInputCallback = callback;
-    
+
     try {
         recognition.start();
         return true;
@@ -211,13 +227,30 @@ function stopVoiceInput() {
     currentVoiceInputCallback = null;
 }
 
+function setupVoiceUI() {
+    if (!speechRecognitionSupported) {
+        const voiceFab = document.getElementById('voiceCommandBtn');
+        if (voiceFab) {
+            voiceFab.style.display = 'none';
+        }
+        document.querySelectorAll('.voice-input-btn').forEach(btn => {
+            btn.style.display = 'none';
+        });
+        return;
+    }
+
+    if (!recognition) {
+        initSpeechRecognition();
+    }
+}
+
 // Voice Command - Global voice commands
 let voiceCommandActive = false;
 
 function toggleVoiceCommand() {
     const btn = document.getElementById('voiceCommandBtn');
     const icon = document.getElementById('voiceCommandIcon');
-    
+
     if (voiceCommandActive) {
         stopVoiceInput();
         voiceCommandActive = false;
@@ -231,7 +264,7 @@ function toggleVoiceCommand() {
             if (text) {
                 processVoiceCommand(text);
             }
-            
+
             // Reset button
             voiceCommandActive = false;
             if (btn) {
@@ -239,7 +272,7 @@ function toggleVoiceCommand() {
                 icon.textContent = 'mic';
             }
         });
-        
+
         if (success) {
             voiceCommandActive = true;
             if (btn) {
@@ -256,11 +289,11 @@ function toggleVoiceCommand() {
 function processVoiceCommand(text) {
     const command = text.toLowerCase().trim();
     console.log('Voice command:', command);
-    
+
     // Extract the actual item name by removing command words
     let itemName = '';
     let type = null;
-    
+
     // Task commands
     if (command.includes('tarea') || command.includes('pendiente') || command.includes('tarea por hacer')) {
         type = 'task';
@@ -339,18 +372,18 @@ function processVoiceCommand(text) {
         // No speak on error - just show notification
         return;
     }
-    
+
     // Clean up the name
     itemName = itemName.replace(/^\s+|\s+$/g, '');
-    
+
     if (itemName.length < 2) {
         showNotification('No entendí el nombre. Intenta de nuevo.');
         return;
     }
-    
+
     // Capitalize first letter
     itemName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
-    
+
     // Create the item based on type
     if (type === 'task') {
         createTaskByVoice(itemName);
@@ -375,11 +408,11 @@ function createTaskByVoice(title) {
         subtasks: [],
         createdAt: new Date().toISOString()
     };
-    
+
     tasks.push(task);
     saveData();
     renderTasks();
-    
+
     showNotification(`Tarea creada: ${title}`);
     speakText(`Tarea "${title}" creada exitosamente`);
 }
@@ -394,11 +427,11 @@ function createHabitByVoice(name) {
         streak: 0,
         completedDates: []
     };
-    
+
     habits.push(habit);
     saveData();
     renderHabits();
-    
+
     showNotification(`Hábito creado: ${name}`);
     speakText(`Hábito "${name}" creado exitosamente`);
 }
@@ -415,11 +448,11 @@ function createKanbanByVoice(title) {
         tags: [],
         createdAt: new Date().toISOString()
     };
-    
+
     kanbanTasks.push(kanbanTask);
     saveData();
     renderKanban();
-    
+
     showNotification(`Tarea Kanban creada: ${title}`);
     speakText(`Tarea "${title}" creada en el kanban`);
 }
@@ -437,11 +470,11 @@ function createCalendarEventByVoice(title) {
         travelAfter: 0,
         createdAt: new Date().toISOString()
     };
-    
+
     scheduleItems.push(event);
     saveData();
     renderCalendar();
-    
+
     showNotification(`Evento creado: ${title}`);
     speakText(`Evento "${title}" creado en el calendario`);
 }
@@ -449,17 +482,27 @@ function createCalendarEventByVoice(title) {
 // Load screen time from localStorage
 function loadScreenTime() {
     const saved = JSON.parse(localStorage.getItem('screenTimeData') || '{}');
+
+    // Check if it's a new day
+    const today = new Date().toDateString();
+    const savedDate = saved.date;
+
+    if (savedDate !== today) {
+        // New day - reset everything
+        screenTimeTotal = 0;
+        screenTimePaused = false;
+        screenTimeStart = Date.now();
+        screenTimeWarningShown = false;
+        return;
+    }
+
     if (saved.total !== undefined) {
         screenTimeTotal = saved.total;
         screenTimePaused = saved.paused || false;
-        
+
         if (screenTimePaused) {
-            // If paused, start from where we left off (no running timer)
             screenTimeStart = Date.now();
         } else {
-            // If not paused, calculate the elapsed time since last save
-            // screenTimeTotal contains time accumulated up to last save
-            // We need to add the time since then
             const now = Date.now();
             if (saved.lastStart) {
                 const additionalTime = now - saved.lastStart;
@@ -472,16 +515,16 @@ function loadScreenTime() {
 
 // Save screen time to localStorage
 function saveScreenTime() {
-    // First, calculate current total if not paused
     let currentTotal = screenTimeTotal;
     if (!screenTimePaused) {
         currentTotal += Date.now() - screenTimeStart;
     }
-    
+
     const data = {
         total: currentTotal,
         paused: screenTimePaused,
-        lastStart: screenTimePaused ? Date.now() : screenTimeStart
+        lastStart: screenTimePaused ? Date.now() : screenTimeStart,
+        date: new Date().toDateString()
     };
     localStorage.setItem('screenTimeData', JSON.stringify(data));
 }
@@ -490,7 +533,7 @@ function saveScreenTime() {
 function toggleScreenTimePause() {
     const tracker = document.getElementById('screenTimeTracker');
     const btn = document.getElementById('screenTimePauseBtn');
-    
+
     if (screenTimePaused) {
         // Reanudar
         screenTimeTotal += Date.now() - screenTimeStart;
@@ -526,14 +569,14 @@ const fullDayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vie
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
-    
+
     if (sidebar) {
         sidebar.classList.toggle('collapsed');
-        
+
         if (mainContent) {
             mainContent.classList.toggle('sidebar-collapsed');
         }
-        
+
         // Save state
         localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
     }
@@ -547,20 +590,20 @@ function updateScreenTime() {
     } else {
         elapsed = screenTimeTotal + (Date.now() - screenTimeStart);
     }
-    
+
     const hours = Math.floor(elapsed / 3600000);
     const minutes = Math.floor((elapsed % 3600000) / 60000);
     const seconds = Math.floor((elapsed % 60000) / 1000);
-    
+
     const display = document.getElementById('screenTimeDisplay');
     if (display) {
         display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
+
         // Update warning state
         const tracker = document.getElementById('screenTimeTracker');
         if (tracker) {
             tracker.classList.remove('warning', 'danger');
-            
+
             if (elapsed >= SCREEN_TIME_DANGER) {
                 tracker.classList.add('danger');
                 if (!screenTimeWarningShown && !screenTimePaused) {
@@ -579,11 +622,11 @@ function updateHeaderTime() {
     const now = new Date();
     const hourEl = document.getElementById('headerHour');
     const dateEl = document.getElementById('headerDate');
-    
+
     if (hourEl) {
         hourEl.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     }
-    
+
     if (dateEl) {
         const options = { weekday: 'short', day: 'numeric', month: 'short' };
         dateEl.textContent = now.toLocaleDateString('es-ES', options);
@@ -594,7 +637,7 @@ function updateHeaderTime() {
 function loadSidebarState() {
     const sidebar = document.getElementById('sidebar');
     const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-    
+
     if (sidebar && collapsed) {
         sidebar.classList.add('collapsed');
         const mainContent = document.querySelector('.main-content');
@@ -633,68 +676,48 @@ let wakeLock = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
-    loadScreenTime(); // Cargar tiempo de pantalla guardado
-    loadVoices(); // Load natural voices
+    loadScreenTime();
+    loadVoices();
+    loadTimeBlocking();
     renderAll();
     startTimerLoop();
     initNotifications();
     setupKanbanDragAndDrop();
     loadSidebarState();
-    
-    // Start screen time tracking (every second)
     setInterval(updateScreenTime, 1000);
     updateScreenTime();
-    
-    // Auto-save screen time every 30 seconds (for browser close protection)
     setInterval(saveScreenTime, 30000);
-    
-    // Save on page unload
     window.addEventListener('beforeunload', saveScreenTime);
-    
-    // Start header time updates (every minute)
     setInterval(updateHeaderTime, 60000);
     updateHeaderTime();
-
     if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark');
         document.getElementById('themeText').textContent = 'Claro';
     }
-
-
+    setupVoiceUI();
     requestNotificationPermission();
     loadCustomAudio();
-
-    // Date in Welcome Banner
     const dateEl = document.getElementById('header-date');
     if (dateEl) {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateEl.textContent = new Date().toLocaleDateString('es-ES', options);
     }
-
-
-    // Switch to saved view
     const savedView = localStorage.getItem('currentView') || 'dashboard';
     switchView(savedView);
-
-    // Verificar alarmas pendientes cuando la app vuelve al primer plano
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             checkPendingAlarms();
         }
     });
-
-    // También verificar cuando la ventana vuelva a tener foco
     window.addEventListener('focus', checkPendingAlarms);
-
-    // Verificar alarmas cada vez que se carga la página
     checkPendingAlarms();
 });
 
 function loadData() {
     try {
-        const t = localStorage.getItem('tasks');
-        const k = localStorage.getItem('kanbanTasks');
-        const h = localStorage.getItem('habits');
+        const t = localStorage.getItem('zenTasks');
+        const k = localStorage.getItem('zenKanban');
+        const h = localStorage.getItem('zenHabits');
         const s = localStorage.getItem('zenSchedule');
         const v = localStorage.getItem('audioVolume');
 
@@ -770,16 +793,16 @@ function loadData() {
 }
 
 function saveData() {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    localStorage.setItem('kanbanTasks', JSON.stringify(kanbanTasks));
-    localStorage.setItem('habits', JSON.stringify(habits));
+    localStorage.setItem('zenTasks', JSON.stringify(tasks));
+    localStorage.setItem('zenKanban', JSON.stringify(kanbanTasks));
+    localStorage.setItem('zenHabits', JSON.stringify(habits));
     localStorage.setItem('zenSchedule', JSON.stringify(scheduleItems));
 }
 
 function switchView(viewId) {
     // Close mobile sidebar when navigating
     closeMobileSidebar();
-    
+
     // Hide all views
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
 
@@ -794,7 +817,7 @@ function switchView(viewId) {
         } else {
             view.style.display = 'block';
         }
-        
+
         // Initialize/refresh each view
         if (viewId === 'dashboard') {
             renderKanban();
@@ -806,6 +829,7 @@ function switchView(viewId) {
             if (typeof renderSchedule === 'function') renderSchedule();
         } else if (viewId === 'timeblocking') {
             renderTimeBlocking();
+            renderTimeBlockingBacklog();
         } else if (viewId === 'pomodoro') {
             initPomodoro();
         } else if (viewId === 'energy') {
@@ -1092,10 +1116,10 @@ function triggerAlarm(task) {
 
     playAlarmSound();
     sendNotification('¡Tiempo Completado!', `La tarea "${task.title}" ha terminado`);
-    
+
     // Voice announcement
     speakText(`¡La tarea ${task.title} ha completado su tiempo!`);
-    
+
     // Vibración más intensa y persistente para móviles
     if (navigator.vibrate) {
         // Patrón de vibración que se repite varias veces
@@ -1160,7 +1184,7 @@ function sendNotification(title, body) {
             new Notification(title, options);
         }
     }
-    
+
     // Voice announcement
     speakText(`${title}. ${body}`);
 }
@@ -1179,9 +1203,9 @@ function renderKanban() {
     const filteredTasks = kanbanTasks.filter(task => {
         if (!kanbanSearchTerm) return true;
         return task.title.toLowerCase().includes(kanbanSearchTerm) ||
-               (task.description && task.description.toLowerCase().includes(kanbanSearchTerm));
+            (task.description && task.description.toLowerCase().includes(kanbanSearchTerm));
     });
-    
+
     const pending = filteredTasks.filter(t => t.status === 'pending');
     const progress = filteredTasks.filter(t => t.status === 'progress');
     const done = filteredTasks.filter(t => t.status === 'done');
@@ -1193,17 +1217,17 @@ function renderKanban() {
 
     // Show empty states if filtered
     const emptyState = '<div class="kanban-empty">Sin tareas</div>';
-    
-    document.getElementById('kanbanPending').innerHTML = pending.length > 0 
-        ? pending.map(t => createKanbanItem(t)).join('') 
+
+    document.getElementById('kanbanPending').innerHTML = pending.length > 0
+        ? pending.map(t => createKanbanItem(t)).join('')
         : emptyState;
-    document.getElementById('kanbanProgress').innerHTML = progress.length > 0 
-        ? progress.map(t => createKanbanItem(t)).join('') 
+    document.getElementById('kanbanProgress').innerHTML = progress.length > 0
+        ? progress.map(t => createKanbanItem(t)).join('')
         : emptyState;
-    document.getElementById('kanbanDone').innerHTML = done.length > 0 
-        ? done.map(t => createKanbanItem(t)).join('') 
+    document.getElementById('kanbanDone').innerHTML = done.length > 0
+        ? done.map(t => createKanbanItem(t)).join('')
         : emptyState;
-    
+
     // Configurar event listeners programáticamente para drag and drop
     setupKanbanDragAndDrop();
 }
@@ -1212,7 +1236,7 @@ function createKanbanItem(task) {
     let timerHtml = '';
     let deletionHtml = '';
     let cardClass = '';
-    
+
     // Check if scheduled for deletion
     if (task.scheduledForDeletion) {
         cardClass = 'scheduled-for-deletion';
@@ -1232,7 +1256,7 @@ function createKanbanItem(task) {
 
         let timerClass = '';
         let progressColor = 'var(--accent)';
-        
+
         if (percent >= 100) {
             timerClass = 'danger timer-completed';
             progressColor = 'var(--success)';
@@ -1256,7 +1280,7 @@ function createKanbanItem(task) {
         const timeSpent = task.elapsed || 0;
         const estimated = (task.time || 0) * 60;
         const efficiency = estimated > 0 ? Math.round((timeSpent / estimated) * 100) : 100;
-        
+
         timerHtml = `
             <div class="task-completed-badge">
                 <span class="check-icon">✓</span>
@@ -1271,12 +1295,13 @@ function createKanbanItem(task) {
 
     return `
                 <div class="kanban-task ${cardClass}" draggable="true" data-task-id="${task.id}"
-                     onclick="editKanban(${task.id})" ondblclick="quickEditKanban(${task.id}, event)">
+                     ondblclick="quickEditKanban(${task.id}, event)">
                     <div class="kanban-task-title">${escapeHtml(task.title)}</div>
                     ${deletionHtml}
                     <div class="kanban-task-meta">
                         ${timerHtml}
                         <div class="kanban-actions" onclick="event.stopPropagation()">
+                            <button class="btn-icon" data-tooltip="Editar" onclick="editKanban(${task.id}, event)">✏️</button>
                             <button class="btn-icon" data-tooltip="Iniciar Timer" onclick="startKanbanTimer(${task.id}, event)">⏱</button>
                             <button class="btn-icon" data-tooltip="Mover Columna" onclick="moveKanban(${task.id}, event)">↔</button>
                             <button class="btn-icon delete" data-tooltip="Eliminar" onclick="deleteKanban(${task.id}, event)">🗑</button>
@@ -1538,7 +1563,10 @@ function renderHabits() {
                         ${escapeHtml(habit.title)}
                         ${streak > 0 ? `<span class="habit-streak" style="margin-left:8px; font-size:0.9rem; background:rgba(255,100,0,0.1); color:#ff6b00; padding:2px 8px; border-radius:12px;">🔥 ${streak}</span>` : ''}
                     </div>
-                    <button class="btn-icon delete" onclick="deleteHabit(${habit.id})" style="width:24px;height:24px;font-size:1.2rem;display:flex;align-items:center;justify-content:center;">×</button>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn-icon" onclick="editHabit(${habit.id})" style="width:24px;height:24px;font-size:0.9rem;display:flex;align-items:center;justify-content:center;color:var(--info);">✏️</button>
+                        <button class="btn-icon delete" onclick="deleteHabit(${habit.id})" style="width:24px;height:24px;font-size:1.2rem;display:flex;align-items:center;justify-content:center;">×</button>
+                    </div>
                 </div>
                 <div class="habit-desc">${habit.description || ''}</div>
                 <div class="habit-days">
@@ -1611,7 +1639,7 @@ function openModal(mode, date = null, status = 'pending') {
     editingKanbanId = null;
     editingHabitId = null;
     selectedCalendarDate = date;
-    
+
     // Store default status for kanban tasks
     if (mode === 'kanban' && status) {
         modalMode = { mode, status };
@@ -1772,7 +1800,7 @@ function createTaskForm() {
                         </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                         <div class="form-group">
                             <label class="form-label">Fecha</label>
                             <input type="date" id="taskDate" class="form-input">
@@ -1780,6 +1808,10 @@ function createTaskForm() {
                         <div class="form-group">
                             <label class="form-label">Hora</label>
                             <input type="time" id="taskTime" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tiempo (min)</label>
+                            <input type="number" id="taskDuration" class="form-input" placeholder="30" min="5" max="480">
                         </div>
                     </div>
                     
@@ -1832,6 +1864,17 @@ function createHabitForm() {
                     <div class="form-group">
                         <label class="form-label">Descripción (opcional)</label>
                         <input type="text" id="habitDesc" class="form-input" placeholder="Detalles del hábito...">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Tiempo estimado (min)</label>
+                            <input type="number" id="habitDuration" class="form-input" placeholder="30" min="5" max="480">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Hora fija (opcional)</label>
+                            <input type="time" id="habitTime" class="form-input" placeholder="Sin hora fija">
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1941,12 +1984,12 @@ function openCalendarModal(date) {
 function handleVoiceInput(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
-    
+
     const btn = input.parentElement.querySelector('.voice-input-btn');
     if (btn) {
         btn.classList.add('listening');
     }
-    
+
     const success = startVoiceInput((transcript) => {
         if (transcript) {
             input.value = transcript;
@@ -1957,7 +2000,7 @@ function handleVoiceInput(inputId) {
             btn.classList.remove('listening');
         }
     });
-    
+
     if (!success && btn) {
         btn.classList.remove('listening');
     }
@@ -1988,6 +2031,8 @@ function handleTaskSubmit(e) {
 
     const tagsVal = document.getElementById('taskTags').value;
     const tags = tagsVal ? tagsVal.split(',').map(s => s.trim()).filter(s => s) : [];
+    const durationVal = document.getElementById('taskDuration').value;
+    const duration = durationVal ? parseInt(durationVal) : 30;
 
     if (editingId) {
         const task = tasks.find(t => t.id === editingId);
@@ -1996,9 +2041,10 @@ function handleTaskSubmit(e) {
             task.priority = selectedPriority;
             task.date = document.getElementById('taskDate').value;
             task.time = document.getElementById('taskTime').value;
+            task.duration = duration;
             task.notes = document.getElementById('taskNotes').value.trim();
             task.tags = tags;
-            task.subtasks = [...tempSubtasks]; // Save copy
+            task.subtasks = [...tempSubtasks];
             showNotification('Tarea actualizada');
         }
         editingId = null;
@@ -2009,6 +2055,7 @@ function handleTaskSubmit(e) {
             priority: selectedPriority,
             date: document.getElementById('taskDate').value,
             time: document.getElementById('taskTime').value,
+            duration: duration,
             notes: document.getElementById('taskNotes').value.trim(),
             tags: tags,
             subtasks: [...tempSubtasks],
@@ -2036,7 +2083,7 @@ function handleKanbanSubmit(e) {
     } else {
         // Get status from modalMode or default to 'pending'
         const taskStatus = (modalMode && modalMode.status) ? modalMode.status : 'pending';
-        
+
         kanbanTasks.push({
             id: Date.now(),
             title: document.getElementById('kanbanTitle').value.trim(),
@@ -2061,12 +2108,18 @@ function handleHabitSubmit(e) {
     const days = [];
     for (let i = 0; i < 7; i++) days.push(document.getElementById(`day${i}`).checked);
 
+    const durationVal = document.getElementById('habitDuration').value;
+    const duration = durationVal ? parseInt(durationVal) : 30;
+    const fixedTime = document.getElementById('habitTime').value || null;
+
     if (editingHabitId) {
         const habit = habits.find(h => h.id === editingHabitId);
         if (habit) {
             habit.title = document.getElementById('habitTitle').value.trim();
             habit.description = document.getElementById('habitDesc').value.trim();
             habit.days = days;
+            habit.duration = duration;
+            habit.fixedTime = fixedTime;
             showNotification('Hábito actualizado');
         }
         editingHabitId = null;
@@ -2076,6 +2129,8 @@ function handleHabitSubmit(e) {
             title: document.getElementById('habitTitle').value.trim(),
             description: document.getElementById('habitDesc').value.trim(),
             days: days,
+            duration: duration,
+            fixedTime: fixedTime,
             completedDates: [],
             createdAt: new Date().toISOString()
         });
@@ -2098,6 +2153,7 @@ function editTask(id) {
         document.getElementById('taskTitle').value = task.title;
         document.getElementById('taskDate').value = task.date || '';
         document.getElementById('taskTime').value = task.time || '';
+        document.getElementById('taskDuration').value = task.duration || 30;
         document.getElementById('taskNotes').value = task.notes || '';
         document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
 
@@ -2112,7 +2168,8 @@ function editTask(id) {
     }, 10);
 }
 
-function editKanban(id) {
+function editKanban(id, event) {
+    if (event) event.stopPropagation();
     const task = kanbanTasks.find(t => t.id === id);
     if (!task) return;
 
@@ -2136,6 +2193,13 @@ function editHabit(id) {
     setTimeout(() => {
         document.getElementById('habitTitle').value = habit.title;
         document.getElementById('habitDesc').value = habit.description || '';
+
+        if (habit.duration) {
+            document.getElementById('habitDuration').value = habit.duration;
+        }
+        if (habit.fixedTime) {
+            document.getElementById('habitTime').value = habit.fixedTime;
+        }
 
         if (habit.days) {
             habit.days.forEach((checked, i) => {
@@ -2183,7 +2247,7 @@ function startKanbanTimer(id, e) {
         task.elapsed = 0;
         task.alarmTriggered = false;
         requestWakeLock();
-        
+
         saveData();
         renderKanban();
         showNotification('⏱ Timer iniciado');
@@ -2193,13 +2257,13 @@ function startKanbanTimer(id, e) {
 function quickEditKanban(id, e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const task = kanbanTasks.find(t => t.id === id);
     if (!task) return;
-    
+
     const taskElement = e.currentTarget;
     const titleElement = taskElement.querySelector('.kanban-task-title');
-    
+
     // Create inline edit
     const input = document.createElement('input');
     input.type = 'text';
@@ -2217,12 +2281,12 @@ function quickEditKanban(id, e) {
         width: 100%;
         outline: none;
     `;
-    
+
     titleElement.innerHTML = '';
     titleElement.appendChild(input);
     input.focus();
     input.select();
-    
+
     const saveEdit = () => {
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== task.title) {
@@ -2234,7 +2298,7 @@ function quickEditKanban(id, e) {
             renderKanban();
         }
     };
-    
+
     input.addEventListener('blur', saveEdit);
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -2245,9 +2309,6 @@ function quickEditKanban(id, e) {
         }
     });
 }
-
-let kanbanSearchTerm = '';
-let timeBlocks = [];
 
 function filterKanban(searchTerm) {
     kanbanSearchTerm = searchTerm.toLowerCase();
@@ -2262,144 +2323,549 @@ function clearKanbanSearch() {
 }
 
 // Time Blocking Functions
+
 function generateTimeBlocking() {
     timeBlocks = [];
-    
-    // Get all pending and progress tasks
-    const relevantTasks = [...tasks, ...kanbanTasks.filter(t => t.status === 'pending')];
-    
-    // Sort by priority and estimated time
-    relevantTasks.sort((a, b) => {
-        const priorityOrder = { alta: 3, media: 2, baja: 1 };
-        const aPriority = priorityOrder[a.prioridad] || 1;
-        const bPriority = priorityOrder[b.prioridad] || 1;
-        
-        if (aPriority !== bPriority) {
-            return bPriority - aPriority; // Higher priority first
-        }
-        
-        // If same priority, shorter tasks first
-        const aTime = a.time || 30;
-        const bTime = b.time || 30;
-        return aTime - bTime;
-    });
-    
-    // Generate time blocks
-    const startTime = 8; // 8 AM
-    const endTime = 18; // 6 PM
-    
-    let currentTime = startTime;
-    let totalPlannedMinutes = 0;
-    
-    relevantTasks.forEach(task => {
-        const taskDuration = task.time || 30;
-        const taskHours = Math.floor(taskDuration / 60);
-        const taskMinutes = taskDuration % 60;
-        
-        // Check if task fits in remaining time
-        const endTimeAdjusted = currentTime + taskHours + (taskMinutes > 0 ? 1 : 0);
-        
-        if (endTimeAdjusted <= endTime) {
-            timeBlocks.push({
-                ...task,
-                startTime: `${currentTime.toString().padStart(2, '0')}:00`,
-                endTime: `${endTimeAdjusted.toString().padStart(2, '0')}:00`,
-                duration: taskDuration,
-                type: task.prioridad || 'media'
-            });
-            
-            currentTime = endTimeAdjusted;
-            totalPlannedMinutes += taskDuration;
-        }
-    });
-    
-    // Add breaks
-    const finalTimeBlocks = [];
-    timeBlocks.forEach((block, index) => {
-        finalTimeBlocks.push(block);
-        
-        // Add break after each task (except last)
-        if (index < timeBlocks.length - 1) {
-            const nextTaskStart = timeBlocks[index + 1].startTime;
-            const currentEnd = block.endTime;
-            const breakStart = currentEnd;
-            const breakEnd = nextTaskStart;
-            
-            finalTimeBlocks.push({
-                type: 'break',
-                startTime: breakStart,
-                endTime: breakEnd,
-                duration: 15 // 15 minute breaks
-            });
-        }
-    });
-    
-    timeBlocks = finalTimeBlocks;
-    renderTimeBlocking();
-    updateTimeBlockingStats(totalPlannedMinutes);
-    showNotification('🎯 Time blocking generado automáticamente');
-}
 
-function renderTimeBlocking() {
-    const grid = document.getElementById('timeblockingGrid');
-    if (!grid) return;
-    
-    const hours = Array.from({length: 13}, (_, i) => i + 8); // 8 AM to 8 PM
-    
-    let html = '';
-    
-    // Header row with hours
-    html += '<div class="timeblock-header">Hora</div>';
-    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    days.forEach(day => {
-        html += `<div class="timeblock-header">${day}</div>`;
-    });
-    
-    // Time slots
-    hours.forEach(hour => {
-        html += `<div class="timeblock-cell">${hour.toString().padStart(2, '0')}:00</div>`;
+    // Get Time Blocking settings
+    const settings = JSON.parse(localStorage.getItem('zenTimeBlockingSettings') || '{}');
+    const dayStart = parseInt(settings.startTime ? settings.startTime.split(':')[0] : 9);
+    const dayEnd = parseInt(settings.endTime ? settings.endTime.split(':')[0] : 18);
+
+    // Get current week start (Monday) - only if not already set
+    if (!currentTBWeekStart) {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        currentTBWeekStart = new Date(today);
+        currentTBWeekStart.setDate(today.getDate() + diff);
+        currentTBWeekStart.setHours(0, 0, 0, 0);
+    }
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(currentTBWeekStart);
+        d.setDate(d.getDate() + i);
+        weekDays.push(d);
+    }
+
+    let totalPlannedMinutes = 0;
+    let overflowItems = [];
+
+    // Find min and max hours from fixed events to show full day
+    let minHour = dayStart;
+    let maxHour = dayEnd;
+
+    weekDays.forEach(day => {
+        const dateStr = day.toISOString().split('T')[0];
+        const dayNum = day.getDay();
+        const dayHabits = habits.filter(h => h.days && h.days[dayNum] === true);
         
-        days.forEach((day, dayIndex) => {
-            const timeSlot = timeBlocks.find(block => 
-                block.startTime === `${hour.toString().padStart(2, '0')}:00` && 
-                block.day === dayIndex + 1
-            );
+        // Include both specific date events AND recurring schedules
+        const dayEvents = scheduleItems.filter(item => {
+            if (item.date) return item.date === dateStr;
+            if (item.days && Array.isArray(item.days)) {
+                return item.days.includes(dayNum);
+            }
+            return false;
+        });
+
+        // Check for habits with fixed time outside range
+        dayHabits.forEach(h => {
+            if (h.fixedTime) {
+                const hHour = parseInt(h.fixedTime.split(':')[0]);
+                minHour = Math.min(minHour, hHour);
+                maxHour = Math.max(maxHour, hHour + Math.ceil((h.duration || 30) / 60));
+            }
+        });
+
+        // Check calendar events (include travel time)
+        dayEvents.forEach(e => {
+            const sHour = parseInt(e.startTime.split(':')[0]);
+            const eHour = parseInt(e.endTime.split(':')[0]);
+            const travelBefore = e.travelBefore || 0;
+            const travelAfter = e.travelAfter || 0;
+            const actualStart = sHour - (travelBefore / 60);
+            const actualEnd = eHour + (travelAfter / 60);
+            minHour = Math.min(minHour, actualStart);
+            maxHour = Math.max(maxHour, actualEnd);
+        });
+    });
+
+    // Ensure at least 6am to 10pm range
+    minHour = Math.min(minHour, 6);
+    maxHour = Math.max(maxHour, 22);
+
+    weekDays.forEach(day => {
+        const dateStr = day.toISOString().split('T')[0];
+        const dayNum = day.getDay();
+
+        // 1. Get calendar events for this day (both specific dates and recurring)
+        const dayEvents = scheduleItems.filter(item => {
+            // Specific date event
+            if (item.date) return item.date === dateStr;
+            // Recurring schedule (has days array) - days use 1=Mon, 2=Tue... 6=Sun format
+            if (item.days && Array.isArray(item.days)) {
+                return item.days.includes(dayNum);
+            }
+            return false;
+        });
+
+        // 2. Get habits for this day (getDay() returns 0=Sun, 1=Mon...)
+        // Convert to HTML index: 0=Sun → 6, 1=Mon → 0, 2=Tue → 1, etc.
+        const htmlDayIndex = (dayNum + 6) % 7;
+        const dayHabits = habits.filter(h => h.days && h.days[dayNum] === true);
+
+        // 3. Get tasks for this day (pending tasks - including kanban)
+        const dayTasks = [
+            ...tasks.filter(t => !t.completed && (t.date === dateStr || !t.date)).map(t => ({ ...t, itemType: 'task' })),
+            ...kanbanTasks.filter(t => t.status !== 'done').map(t => ({ ...t, itemType: 'kanban', priority: t.status === 'progress' ? 'alta' : 'media' }))
+        ];
+
+        // Get occupied time slots within working hours
+        const occupiedSlots = [];
+
+        // Add calendar events as blocks
+        dayEvents.forEach(event => {
+            const startHour = parseInt(event.startTime.split(':')[0]);
+            const endHour = parseInt(event.endTime.split(':')[0]);
+            const travelBefore = event.travelBefore || 0;
+            const travelAfter = event.travelAfter || 0;
             
-            if (timeSlot) {
-                const taskClass = timeSlot.type === 'break' ? 'timeblock-break' : `timeblock-task timeblock-task-${timeSlot.type}`;
-                html += `
-                    <div class="timeblock-cell">
-                        <div class="${taskClass}">
-                            <div class="timeblock-task-title">${escapeHtml(timeSlot.title)}</div>
-                            <div class="timeblock-task-time">${timeSlot.type === 'break' ? 'Descanso' : timeSlot.duration + 'min'}</div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                html += '<div class="timeblock-cell"></div>';
+            // Calculate actual start/end with travel time
+            const actualStartHour = startHour - (travelBefore / 60);
+            const actualEndHour = endHour + (travelAfter / 60);
+
+            // Add to occupied slots (include travel time)
+            occupiedSlots.push({ 
+                start: Math.max(actualStartHour, dayStart), 
+                end: Math.min(actualEndHour, dayEnd),
+                title: event.title || event.subject || 'Evento'
+            });
+
+            // Display block with travel time info
+            const formatTime = (hours) => {
+                const h = Math.floor(hours);
+                const m = Math.round((hours - h) * 60);
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            };
+            
+            timeBlocks.push({
+                id: `cal-${event.id}`,
+                title: event.title || event.subject || 'Evento',
+                startTime: formatTime(actualStartHour),
+                endTime: formatTime(actualEndHour),
+                duration: (endHour - startHour + travelBefore/60 + travelAfter/60) * 60,
+                type: 'calendar',
+                date: dateStr,
+                dayIndex: htmlDayIndex,
+                travelBefore,
+                travelAfter
+            });
+        });
+
+        // Add habits with fixed time
+        dayHabits.forEach(habit => {
+            if (habit.fixedTime) {
+                const startHour = parseInt(habit.fixedTime.split(':')[0]);
+                const duration = habit.duration || 30;
+                const endHour = startHour + Math.ceil(duration / 60);
+
+                // Only add to occupiedSlots if within working hours
+                if (startHour >= dayStart && startHour < dayEnd) {
+                    occupiedSlots.push({ start: startHour, end: Math.min(endHour, dayEnd) });
+                }
+
+                timeBlocks.push({
+                    id: `habit-${habit.id}`,
+                    title: habit.title,
+                    startTime: habit.fixedTime,
+                    endTime: `${endHour.toString().padStart(2, '0')}:00`,
+                    duration: duration,
+                    type: 'habit-fixed',
+                    date: dateStr,
+                    dayIndex: htmlDayIndex,
+                    sourceId: habit.id
+                });
+            }
+        });
+
+        // Calculate available time slots
+        const sortedOccupied = occupiedSlots.sort((a, b) => a.start - b.start);
+        const availableSlots = [];
+        let currentSlot = dayStart;
+
+        sortedOccupied.forEach(slot => {
+            if (slot.start > currentSlot) {
+                availableSlots.push({ start: currentSlot, end: slot.start });
+            }
+            currentSlot = Math.max(currentSlot, slot.end);
+        });
+
+        if (currentSlot < dayEnd) {
+            availableSlots.push({ start: currentSlot, end: dayEnd });
+        }
+
+        // Sort items by priority: habits without fixed time first, then tasks
+        const flexibleItems = [
+            ...dayHabits.filter(h => !h.fixedTime).map(h => ({ ...h, itemType: 'habit' })),
+            ...dayTasks.map(t => ({ ...t, itemType: 'task' }))
+        ];
+
+        flexibleItems.sort((a, b) => {
+            const priorityOrder = { alta: 3, media: 2, baja: 1 };
+            const aPriority = priorityOrder[a.priority] || 1;
+            const bPriority = priorityOrder[b.priority] || 1;
+            return bPriority - aPriority;
+        });
+
+        // Assign flexible items to available slots
+        flexibleItems.forEach(item => {
+            const duration = item.duration || 30;
+            const hoursNeeded = Math.ceil(duration / 60);
+
+            let placed = false;
+
+            for (const slot of availableSlots) {
+                const slotDuration = (slot.end - slot.start) * 60;
+
+                if (slotDuration >= duration) {
+                    const startHour = slot.start;
+                    const endHour = startHour + hoursNeeded;
+
+                    // Format time properly (handle decimal hours)
+                    const formatTaskTime = (hours) => {
+                        const h = Math.floor(hours);
+                        const m = Math.round((hours - h) * 60);
+                        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    };
+
+                    timeBlocks.push({
+                        id: `${item.itemType}-${item.id}`,
+                        title: item.title,
+                        startTime: formatTaskTime(startHour),
+                        endTime: formatTaskTime(endHour),
+                        duration: duration,
+                        type: item.itemType === 'habit' ? 'habit' : 'task',
+                        date: dateStr,
+                        dayIndex: htmlDayIndex,
+                        sourceId: item.id,
+                        priority: item.priority || 'media'
+                    });
+
+                    // Update available slot
+                    slot.start = endHour;
+
+                    totalPlannedMinutes += duration;
+                    placed = true;
+                    break;
+                }
+            }
+
+            if (!placed) {
+                overflowItems.push({
+                    title: item.title,
+                    duration: duration,
+                    type: item.itemType,
+                    date: dateStr
+                });
             }
         });
     });
-    
-    grid.innerHTML = html;
+
+    renderTimeBlocking();
+    updateTimeBlockingStats(totalPlannedMinutes);
+
+    // Show overflow notification
+    if (overflowItems.length > 0) {
+        const itemList = overflowItems.map(i => `• ${i.title} (${i.duration}min)`).join('\n');
+        showNotification(`⚠️ No cabe todo! ${overflowItems.length} items sin asignar`);
+        speakText(`Atención: ${overflowItems.length} elementos no pudieron ser asignados. Por favor replanifica tu día.`);
+        console.log('Overflow items:', overflowItems);
+    } else {
+        showNotification('🎯 Time blocking generado automáticamente');
+    }
+
+    // Save to localStorage
+    saveTimeBlockingData();
+}
+
+function saveTimeBlockingData() {
+    const data = {
+        timeBlocks: timeBlocks,
+        weekStart: currentTBWeekStart ? currentTBWeekStart.toISOString() : null
+    };
+    localStorage.setItem('zenTimeBlocking', JSON.stringify(data));
+}
+
+function loadTimeBlocking() {
+    const saved = localStorage.getItem('zenTimeBlocking');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            timeBlocks = data.timeBlocks || [];
+            if (data.weekStart) {
+                currentTBWeekStart = new Date(data.weekStart);
+            } else {
+                // Initialize to current week
+                const today = new Date();
+                const dayOfWeek = today.getDay();
+                const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                currentTBWeekStart = new Date(today);
+                currentTBWeekStart.setDate(today.getDate() + diff);
+                currentTBWeekStart.setHours(0, 0, 0, 0);
+            }
+            renderTimeBlocking();
+            renderTimeBlockingBacklog();
+            updateTimeBlockingStats(timeBlocks.reduce((sum, b) => sum + (b.duration || 0), 0));
+        } catch (e) {
+            console.error('Error loading time blocking:', e);
+        }
+    }
+}
+
+function renderTimeBlocking() {
+    const timeColumn = document.getElementById('tbTimeColumn');
+    const gridLines = document.getElementById('tbGridLines');
+    const blocksContainer = document.getElementById('tbBlocksContainer');
+    const dayHeaders = document.querySelectorAll('.tb-day-header');
+
+    if (!timeColumn || !blocksContainer) return;
+
+    // Initialize week start if not set
+    if (!currentTBWeekStart) {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Sunday
+        // Monday = 1, so diff to get to Monday
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        currentTBWeekStart = new Date(today);
+        currentTBWeekStart.setDate(today.getDate() + diff);
+        currentTBWeekStart.setHours(0, 0, 0, 0);
+    }
+
+    // Calculate dynamic hour range
+    let minHour = 8;
+    let maxHour = 20;
+
+    if (timeBlocks.length > 0) {
+        timeBlocks.forEach(block => {
+            if (block.startTime && block.endTime) {
+                const startHour = parseInt(block.startTime.split(':')[0]);
+                const endHour = parseInt(block.endTime.split(':')[0]);
+                minHour = Math.min(minHour, startHour);
+                maxHour = Math.max(maxHour, endHour);
+            }
+        });
+    }
+
+    minHour = Math.min(minHour, 5);
+    maxHour = Math.max(maxHour, 23);
+
+    // Render time column
+    let timeHtml = '';
+    let gridLinesHtml = '';
+    for (let h = minHour; h < maxHour; h++) {
+        timeHtml += `<div class="tb-time-slot"><span>${h.toString().padStart(2, '0')}:00</span></div>`;
+        gridLinesHtml += '<div class="tb-grid-line"></div>'.repeat(7);
+    }
+    timeColumn.innerHTML = timeHtml;
+    gridLines.innerHTML = gridLinesHtml;
+
+    // Update day headers with actual dates (0 = Monday in our HTML)
+    if (currentTBWeekStart) {
+        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(currentTBWeekStart);
+            d.setDate(d.getDate() + i);
+
+            const isToday = d.toDateString() === today.toDateString();
+            const header = dayHeaders[i];
+
+            if (header) {
+                header.className = 'tb-day-header' + (isToday ? ' tb-day-current' : '') + (i >= 5 ? ' tb-day-weekend' : '');
+                header.innerHTML = `<div class="tb-day-name">${dayNames[i]}</div><div class="tb-day-num">${d.getDate()}</div>`;
+            }
+        }
+    }
+
+    // Render blocks
+    let blocksHtml = '';
+    const hourHeight = 60; // pixels per hour
+
+    // Group blocks by day
+    const dayBlocks = [[], [], [], [], [], [], []];
+    timeBlocks.forEach(block => {
+        if (block.dayIndex !== undefined && block.dayIndex >= 0 && block.dayIndex < 7) {
+            dayBlocks[block.dayIndex].push(block);
+        }
+    });
+
+    dayBlocks.forEach((blocks, dayIndex) => {
+        blocksHtml += '<div class="tb-day-column">';
+
+        blocks.forEach(block => {
+            if (block.startTime && block.duration) {
+                const startHour = parseInt(block.startTime.split(':')[0]);
+                const startMinutes = parseInt(block.startTime.split(':')[1]) || 0;
+                const top = (startHour - minHour) * hourHeight + (startMinutes / 60) * hourHeight;
+                const height = (block.duration / 60) * hourHeight;
+
+                let blockClass = 'tb-block';
+                let title = escapeHtml(block.title);
+
+                if (block.type === 'calendar') {
+                    blockClass += ' tb-block-calendar';
+                    title = '📅 ' + title;
+                } else if (block.type === 'habit-fixed' || block.type === 'habit') {
+                    blockClass += ' tb-block-habit';
+                    title = '🎯 ' + title;
+                } else {
+                    blockClass += ' tb-block-task';
+                }
+
+                blocksHtml += `
+                    <div class="${blockClass}" style="top: ${top}px; height: ${Math.max(height, 30)}px;" title="${title}">
+                        <div class="tb-block-title">${title}</div>
+                        <div class="tb-block-time">${block.startTime} - ${block.endTime}</div>
+                    </div>
+                `;
+            }
+        });
+
+        blocksHtml += '</div>';
+    });
+
+    blocksContainer.innerHTML = blocksHtml;
+
+    // Show current time line
+    const now = new Date();
+    const currentHour = now.getHours();
+    if (currentHour >= minHour && currentHour < maxHour) {
+        const currentLine = document.getElementById('tbCurrentTimeLine');
+        if (currentLine) {
+            const currentMinutes = now.getMinutes();
+            const top = (currentHour - minHour) * hourHeight + (currentMinutes / 60) * hourHeight;
+            currentLine.style.display = 'flex';
+            currentLine.style.top = top + 'px';
+        }
+    }
+
+    // Update week label
+    if (currentTBWeekStart) {
+        const weekEnd = new Date(currentTBWeekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        const startMonth = currentTBWeekStart.toLocaleDateString('es-ES', { month: 'short' });
+        const endMonth = weekEnd.toLocaleDateString('es-ES', { month: 'short' });
+
+        let weekLabel = `${currentTBWeekStart.getDate()} - ${weekEnd.getDate()} ${startMonth}`;
+        if (startMonth !== endMonth) {
+            weekLabel = `${currentTBWeekStart.getDate()} ${startMonth} - ${weekEnd.getDate()} ${endMonth}`;
+        }
+
+        document.getElementById('tbWeekLabel').textContent = weekLabel;
+    }
 }
 
 function updateTimeBlockingStats(totalPlannedMinutes) {
     const totalHours = Math.floor(totalPlannedMinutes / 60);
     const totalMinutes = totalPlannedMinutes % 60;
-    
-    document.getElementById('totalPlannedTime').textContent = `${totalHours}h ${totalMinutes}m`;
-    document.getElementById('totalTasksCount').textContent = timeBlocks.filter(b => b.type !== 'break').length;
-    
-    // Calculate focus time percentage (assuming 8-hour workday = 480 minutes)
-    const focusPercentage = Math.min(Math.round((totalPlannedMinutes / 480) * 100), 100);
-    document.getElementById('focusTimePercent').textContent = `${focusPercentage}%`;
+
+    const timeEl = document.getElementById('totalPlannedTime');
+    if (timeEl) {
+        timeEl.textContent = totalHours > 0 ? `${totalHours}h` : `${totalMinutes}m`;
+    }
+
+    const countEl = document.getElementById('totalTasksCount');
+    if (countEl) {
+        countEl.textContent = timeBlocks.filter(b => b.type !== 'break').length;
+    }
+
+    const focusEl = document.getElementById('focusTimePercent');
+    if (focusEl) {
+        const focusPercentage = Math.min(Math.round((totalPlannedMinutes / 480) * 100), 100);
+        focusEl.textContent = `${focusPercentage}%`;
+    }
+
+    // Update backlog
+    renderTimeBlockingBacklog();
+}
+
+function renderTimeBlockingBacklog() {
+    const backlogList = document.getElementById('tbBacklogList');
+    const backlogCount = document.getElementById('tbBacklogCount');
+
+    if (!backlogList) return;
+
+    // Get unassigned tasks and habits
+    const assignedIds = timeBlocks.map(b => b.sourceId).filter(id => id);
+
+    const unassignedTasks = tasks.filter(t => !t.completed && !assignedIds.includes(t.id));
+    const unassignedHabits = habits.filter(h => !assignedIds.includes(`habit-${h.id}`));
+
+    const backlogItems = [
+        ...unassignedTasks.map(t => ({ ...t, itemType: 'task' })),
+        ...unassignedHabits.map(h => ({ ...h, itemType: 'habit' }))
+    ];
+
+    if (backlogCount) {
+        backlogCount.textContent = backlogItems.length;
+    }
+
+    if (backlogItems.length === 0) {
+        backlogList.innerHTML = '<p style="color: var(--tb-text-sub); font-size: 0.875rem; text-align: center; padding: 20px;">No hay tareas pendientes</p>';
+        return;
+    }
+
+    let html = '';
+    backlogItems.forEach(item => {
+        const tagClass = item.itemType === 'habit' ? 'tb-backlog-tag-health' : 'tb-backlog-tag-work';
+        const tagLabel = item.itemType === 'habit' ? 'Health' : 'Work';
+        const duration = item.duration || 30;
+        const hours = Math.floor(duration / 60);
+        const mins = duration % 60;
+        const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+        html += `
+            <div class="tb-backlog-item" draggable="true">
+                <span class="tb-backlog-tag ${tagClass}">${tagLabel}</span>
+                <div class="tb-backlog-item-title">${escapeHtml(item.title)}</div>
+                <div class="tb-backlog-item-time">
+                    <span class="material-icons" style="font-size: 14px;">schedule</span>
+                    <span>${timeStr}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    backlogList.innerHTML = html;
+}
+
+function navigateTBWeek(direction) {
+    if (!currentTBWeekStart) {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        currentTBWeekStart = new Date(today);
+        currentTBWeekStart.setDate(today.getDate() + diff);
+        currentTBWeekStart.setHours(0, 0, 0, 0);
+    }
+
+    currentTBWeekStart.setDate(currentTBWeekStart.getDate() + (direction * 7));
+
+    // Update week label and re-render
+    renderTimeBlocking();
+    saveTimeBlockingData();
 }
 
 function clearTimeBlocking() {
     timeBlocks = [];
     renderTimeBlocking();
     updateTimeBlockingStats(0);
+    localStorage.removeItem('zenTimeBlocking');
     showNotification('🗑️ Time blocking limpiado');
 }
 
@@ -2425,10 +2891,10 @@ function loadPomodoroStats() {
     const today = new Date().toDateString();
     const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
     const todayStats = stats[today] || { completed: 0, seconds: 0 };
-    
+
     pomodoroCompletedToday = todayStats.completed;
     pomodoroTotalSecondsToday = todayStats.seconds;
-    
+
     // Load streak
     pomodoroCurrentStreak = calculatePomodoroStreak();
 }
@@ -2437,12 +2903,12 @@ function calculatePomodoroStreak() {
     const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
     let streak = 0;
     const today = new Date();
-    
+
     for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toDateString();
-        
+
         if (stats[dateStr] && stats[dateStr].completed > 0) {
             streak++;
         } else if (i === 0) {
@@ -2452,22 +2918,22 @@ function calculatePomodoroStreak() {
             break;
         }
     }
-    
+
     return streak;
 }
 
 function populatePomodoroTaskSelect() {
     const select = document.getElementById('pomodoroTaskSelect');
     if (!select) return;
-    
+
     const relevantTasks = [...tasks.filter(t => !t.completed), ...kanbanTasks.filter(t => t.status !== 'done')];
-    
+
     select.innerHTML = '<option value="">Elige una tarea...</option>';
     relevantTasks.forEach(task => {
         select.innerHTML += `<option value="${task.id}">${escapeHtml(task.title)}</option>`;
     });
-    
-    select.onchange = function() {
+
+    select.onchange = function () {
         pomodoroSelectedTaskId = this.value;
         const task = relevantTasks.find(t => t.id === parseInt(this.value));
         document.getElementById('pomodoroTaskTitle').textContent = task ? task.title : 'Selecciona una tarea';
@@ -2490,7 +2956,7 @@ let focusTimeLeft = 25 * 60;
 function toggleTimer() {
     const playIcon = document.getElementById('focusPlayIcon');
     const btnText = document.getElementById('focusBtnText');
-    
+
     if (focusTimerRunning) {
         // Pause timer
         clearInterval(focusTimerInterval);
@@ -2502,11 +2968,11 @@ function toggleTimer() {
         focusTimerRunning = true;
         if (playIcon) playIcon.textContent = '⏸';
         if (btnText) btnText.textContent = 'Pausar';
-        
+
         focusTimerInterval = setInterval(() => {
             focusTimeLeft--;
             updateFocusTimerDisplay();
-            
+
             if (focusTimeLeft <= 0) {
                 clearInterval(focusTimerInterval);
                 focusTimerRunning = false;
@@ -2524,13 +2990,13 @@ function stopTimer() {
     clearInterval(focusTimerInterval);
     focusTimerRunning = false;
     focusTimeLeft = 25 * 60;
-    
+
     const playIcon = document.getElementById('focusPlayIcon');
     const btnText = document.getElementById('focusBtnText');
-    
+
     if (playIcon) playIcon.textContent = '▶';
     if (btnText) btnText.textContent = 'Iniciar';
-    
+
     updateFocusTimerDisplay();
 }
 
@@ -2549,7 +3015,7 @@ function exitFocusMode() {
         clearInterval(focusTimerInterval);
         focusTimerRunning = false;
     }
-    
+
     // Switch back to dashboard
     switchView('dashboard');
 }
@@ -2564,7 +3030,7 @@ function completeFocusTask() {
             saveData();
             renderTasks();
         }
-        
+
         const kanbanTask = kanbanTasks.find(t => t.id === focusTaskId);
         if (kanbanTask) {
             kanbanTask.status = 'done';
@@ -2572,15 +3038,15 @@ function completeFocusTask() {
             renderKanban();
         }
     }
-    
+
     // Stop timer
     if (focusTimerRunning) {
         clearInterval(focusTimerInterval);
         focusTimerRunning = false;
     }
-    
+
     sendNotification('¡Tarea completada!', 'Has completado tu tarea en modo enfoque');
-    
+
     // Switch back to dashboard
     switchView('dashboard');
 }
@@ -2591,14 +3057,14 @@ function startPomodoro() {
     pomodoroIsRunning = true;
     document.getElementById('pomodoroStartBtn').style.display = 'none';
     document.getElementById('pomodoroPauseBtn').style.display = 'flex';
-    
+
     // Request wake lock for timer
     requestWakeLock();
-    
+
     pomodoroInterval = setInterval(() => {
         pomodoroTimeLeft--;
         updatePomodoroDisplay();
-        
+
         if (pomodoroTimeLeft <= 0) {
             completePomodoroSession();
         }
@@ -2623,31 +3089,31 @@ function resetPomodoro() {
 
 function completePomodoroSession() {
     pausePomodoro();
-    
+
     if (!pomodoroIsBreak) {
         // Work session completed
         pomodoroCompletedToday++;
         pomodoroTotalSecondsToday += pomodoroWorkDuration * 60;
-        
+
         // Save stats
         const today = new Date().toDateString();
         const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
         stats[today] = { completed: pomodoroCompletedToday, seconds: pomodoroTotalSecondsToday };
         localStorage.setItem('pomodoroStats', JSON.stringify(stats));
-        
+
         // Update current streak
         pomodoroCurrentStreak = calculatePomodoroStreak();
         updatePomodoroStats();
-        
+
         // Play completion sound
         playAlarmSound();
-        
+
         // Switch to break
         pomodoroIsBreak = true;
         pomodoroTimeLeft = pomodoroBreakDuration * 60;
         document.getElementById('sessionType').textContent = 'Descanso';
         showNotification('🍅 ¡Pomodoro completado! Time for a break.');
-        
+
         // Auto-start break (optional)
         if (confirm('¿Iniciar descanso automáticamente?')) {
             startPomodoro();
@@ -2659,37 +3125,37 @@ function completePomodoroSession() {
         document.getElementById('sessionType').textContent = 'Trabajo';
         showNotification('⏰ Descanso terminado. ¡Listo para otro pomodoro?');
     }
-    
+
     updatePomodoroDisplay();
 }
 
 function updatePomodoroDisplay() {
     const minutes = Math.floor(pomodoroTimeLeft / 60);
     const seconds = pomodoroTimeLeft % 60;
-    document.getElementById('pomodoroTimer').textContent = 
+    document.getElementById('pomodoroTimer').textContent =
         `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
+
     updatePomodoroStats();
 }
 
 function updatePomodoroStats() {
     document.getElementById('todayPomodoros').textContent = pomodoroCompletedToday;
-    
+
     const hours = Math.floor(pomodoroTotalSecondsToday / 3600);
     const minutes = Math.floor((pomodoroTotalSecondsToday % 3600) / 60);
     document.getElementById('todayFocusTime').textContent = `${hours}h ${minutes}m`;
-    
+
     document.getElementById('currentStreak').textContent = pomodoroCurrentStreak;
 }
 
 function setPomodoroDuration(minutes) {
     pomodoroWorkDuration = minutes;
     localStorage.setItem('pomodoroWorkDuration', minutes);
-    
+
     document.querySelectorAll('.duration-btn[data-duration]').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.duration) === minutes);
     });
-    
+
     if (!pomodoroIsRunning && !pomodoroIsBreak) {
         pomodoroTimeLeft = minutes * 60;
         updatePomodoroDisplay();
@@ -2699,11 +3165,11 @@ function setPomodoroDuration(minutes) {
 function setBreakDuration(minutes) {
     pomodoroBreakDuration = minutes;
     localStorage.setItem('pomodoroBreakDuration', minutes);
-    
+
     document.querySelectorAll('.duration-btn[data-break]').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.break) === minutes);
     });
-    
+
     if (pomodoroIsBreak && !pomodoroIsRunning) {
         pomodoroTimeLeft = minutes * 60;
         updatePomodoroDisplay();
@@ -2719,21 +3185,21 @@ function loadStats() {
     const pendingTasks = tasks.filter(t => !t.completed).length + kanbanTasks.filter(t => t.status === 'pending').length;
     const inProgressTasks = kanbanTasks.filter(t => t.status === 'progress').length;
     const productivityRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     // Calculate weekly trends
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
-    
+
     const weekTasks = tasks.filter(t => t.createdAt && t.createdAt >= weekAgoStr).length;
     const weekCompleted = tasks.filter(t => t.completed && t.completedAt && t.completedAt >= weekAgoStr).length;
-    
+
     // Calculate average time
     const tasksWithTime = kanbanTasks.filter(t => t.time && t.time > 0);
-    const avgTime = tasksWithTime.length > 0 
+    const avgTime = tasksWithTime.length > 0
         ? Math.round(tasksWithTime.reduce((sum, t) => sum + t.time, 0) / tasksWithTime.length)
         : 0;
-    
+
     // Calculate habits stats
     let habitsCompleted = 0;
     habits.forEach(h => {
@@ -2741,18 +3207,18 @@ function loadStats() {
             habitsCompleted += h.completedDates.length;
         }
     });
-    
+
     const weekHabits = habits.reduce((sum, h) => {
         if (h.completedDates) {
             return sum + h.completedDates.filter(d => d >= weekAgoStr).length;
         }
         return sum;
     }, 0);
-    
+
     // Calculate pomodoro stats
     const pomodorosToday = pomodoroCompletedToday || 0;
     const pomodoroTime = Math.round((pomodorosToday * (pomodoroWorkDuration || 25)) / 60);
-    
+
     // Calculate score (gamification)
     const score = (completedTasks * 10) + (habitsCompleted * 5) + (pomodorosToday * 3) + (productivityRate);
     let level = 'Principiante';
@@ -2760,14 +3226,14 @@ function loadStats() {
     else if (score >= 300) level = 'Avanzado';
     else if (score >= 150) level = 'Intermedio';
     else if (score >= 50) level = 'Aprendiz';
-    
+
     // Calculate streak
     let bestStreak = 0;
     habits.forEach(h => {
         const streak = calculateStreak(h);
         if (streak > bestStreak) bestStreak = streak;
     });
-    
+
     // Update stats display
     const totalStatEl = document.getElementById('totalTasksStat');
     const completedStatEl = document.getElementById('completedTasksStat');
@@ -2777,7 +3243,7 @@ function loadStats() {
     const habitsEl = document.getElementById('habitsCompletedStat');
     const pomodoroEl = document.getElementById('pomodoroStat');
     const scoreEl = document.getElementById('scoreStat');
-    
+
     // Trends
     const totalTrendEl = document.getElementById('totalTasksTrend');
     const completedTrendEl = document.getElementById('completedTrend');
@@ -2787,7 +3253,7 @@ function loadStats() {
     const habitsTrendEl = document.getElementById('habitsTrend');
     const pomodoroTrendEl = document.getElementById('pomodoroTrend');
     const scoreTrendEl = document.getElementById('scoreTrend');
-    
+
     if (totalStatEl) totalStatEl.textContent = totalTasks;
     if (completedStatEl) completedStatEl.textContent = completedTasks;
     if (productivityEl) productivityEl.textContent = productivityRate + '%';
@@ -2796,7 +3262,7 @@ function loadStats() {
     if (habitsEl) habitsEl.textContent = habitsCompleted;
     if (pomodoroEl) pomodoroEl.textContent = pomodorosToday;
     if (scoreEl) scoreEl.textContent = score;
-    
+
     if (totalTrendEl) totalTrendEl.textContent = `+${weekTasks} esta semana`;
     if (completedTrendEl) completedTrendEl.textContent = `+${weekCompleted} esta semana`;
     if (productivityTrendEl) productivityTrendEl.textContent = `${productivityRate}% vs semana anterior`;
@@ -2805,7 +3271,7 @@ function loadStats() {
     if (habitsTrendEl) habitsTrendEl.textContent = `+${weekHabits} esta semana`;
     if (pomodoroTrendEl) pomodoroTrendEl.textContent = `${pomodoroTime}h de enfoque`;
     if (scoreTrendEl) scoreTrendEl.textContent = `Nivel: ${level}`;
-    
+
     // Render Charts
     renderTasksByStatusChart(completedTasks, pendingTasks, inProgressTasks);
     renderWeeklyProductivityChart();
@@ -2832,11 +3298,11 @@ function setStatsPeriod(period, btn) {
 function renderTasksByStatusChart(completed, pending, inProgress) {
     const ctx = document.getElementById('tasksByStatusChart');
     if (!ctx) return;
-    
+
     if (tasksByStatusChart) {
         tasksByStatusChart.destroy();
     }
-    
+
     tasksByStatusChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -2865,19 +3331,19 @@ function renderTasksByStatusChart(completed, pending, inProgress) {
 function renderWeeklyProductivityChart() {
     const ctx = document.getElementById('weeklyProductivityChart');
     if (!ctx) return;
-    
+
     if (weeklyProductivityChart) {
         weeklyProductivityChart.destroy();
     }
-    
+
     // Get last 7 days data
     const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     const data = [0, 0, 0, 0, 0, 0, 0]; // Default values
-    
+
     // Get pomodoro stats for last 7 days
     const pomodoroStats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
     const today = new Date();
-    
+
     for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -2886,7 +3352,7 @@ function renderWeeklyProductivityChart() {
             data[6 - i] = pomodoroStats[dateStr].completed || 0;
         }
     }
-    
+
     weeklyProductivityChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2920,20 +3386,20 @@ function renderWeeklyProductivityChart() {
 function renderRecentTasksChart() {
     const ctx = document.getElementById('recentTasksChart');
     if (!ctx) return;
-    
+
     if (recentTasksChart) {
         recentTasksChart.destroy();
     }
-    
+
     // Get recent tasks (last 10)
     const recentTasks = [...tasks, ...kanbanTasks]
         .sort((a, b) => b.id - a.id)
         .slice(0, 10)
         .reverse();
-    
+
     const labels = recentTasks.map(t => t.title.substring(0, 15) + (t.title.length > 15 ? '...' : ''));
     const data = recentTasks.map(t => t.completed || t.status === 'done' ? 1 : 0);
-    
+
     recentTasksChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2959,7 +3425,7 @@ function renderRecentTasksChart() {
                     max: 1,
                     ticks: {
                         stepSize: 1,
-                        callback: function(value) {
+                        callback: function (value) {
                             return value === 0 ? 'Pendiente' : value === 1 ? 'Completada' : '';
                         }
                     }
@@ -2972,22 +3438,22 @@ function renderRecentTasksChart() {
 function renderHabitsTrendChart() {
     const ctx = document.getElementById('habitsTrendChart');
     if (!ctx) return;
-    
+
     if (habitsTrendChart) {
         habitsTrendChart.destroy();
     }
-    
+
     // Get last 7 days data
     const days = [];
     const data = [];
     const today = new Date();
-    
+
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
         const dStr = d.toISOString().split('T')[0];
         days.push(['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]);
-        
+
         let completed = 0;
         habits.forEach(h => {
             if (h.completedDates && h.completedDates.includes(dStr)) {
@@ -2996,7 +3462,7 @@ function renderHabitsTrendChart() {
         });
         data.push(completed);
     }
-    
+
     habitsTrendChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -3034,15 +3500,15 @@ function renderHabitsTrendChart() {
 function renderPriorityChart() {
     const ctx = document.getElementById('priorityChart');
     if (!ctx) return;
-    
+
     if (priorityChart) {
         priorityChart.destroy();
     }
-    
+
     const alta = [...tasks, ...kanbanTasks].filter(t => t.priority === 'alta').length;
     const media = [...tasks, ...kanbanTasks].filter(t => t.priority === 'media').length;
     const baja = [...tasks, ...kanbanTasks].filter(t => t.priority === 'baja').length;
-    
+
     priorityChart = new Chart(ctx, {
         type: 'polarArea',
         data: {
@@ -3086,18 +3552,18 @@ function saveEnergyLogs() {
 function logEnergyLevel() {
     const energyLevel = prompt('¿Cómo está tu energía actual? (1-5)', '3');
     const level = parseInt(energyLevel);
-    
+
     if (level >= 1 && level <= 5) {
         const now = new Date();
         const hour = now.getHours();
-        
+
         energyLogs.push({
             level: level,
             hour: hour,
             timestamp: now.toISOString(),
             mood: null // Could add mood tracking later
         });
-        
+
         saveEnergyLogs();
         renderEnergyChart();
         generateEnergyInsights();
@@ -3108,30 +3574,30 @@ function logEnergyLevel() {
 function renderEnergyChart() {
     const container = document.getElementById('energyChart');
     if (!container) return;
-    
+
     // Group by hour and calculate average
     const hourlyAverages = {};
     const timeSlots = ['6:00', '7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-    
+
     timeSlots.forEach((slot, index) => {
         const hour = index + 6;
         const relevantLogs = energyLogs.filter(log => log.hour === hour);
-        
+
         if (relevantLogs.length > 0) {
             const avg = relevantLogs.reduce((sum, log) => sum + log.level, 0) / relevantLogs.length;
             hourlyAverages[hour] = avg;
         }
     });
-    
+
     let html = '<div class="energy-timeline">';
     html += '<h3>📊 Tu Patrón de Energía (Promedio)</h3>';
-    
+
     timeSlots.forEach((slot, index) => {
         const hour = index + 6;
         const avgLevel = hourlyAverages[hour] || 0;
         const percentage = avgLevel * 20;
         const levelClass = avgLevel <= 2 ? 'low' : avgLevel <= 3.5 ? 'medium' : 'high';
-        
+
         html += `
             <div class="energy-row">
                 <div class="energy-time">${slot}</div>
@@ -3142,7 +3608,7 @@ function renderEnergyChart() {
             </div>
         `;
     });
-    
+
     html += '</div>';
     container.innerHTML = html;
 }
@@ -3156,24 +3622,24 @@ function generateEnergyInsights() {
         document.getElementById('lightTasksTime').textContent = '--';
         return;
     }
-    
+
     // Calculate best times
     const morningLogs = energyLogs.filter(log => log.hour >= 6 && log.hour < 12);
     const afternoonLogs = energyLogs.filter(log => log.hour >= 12 && log.hour < 18);
-    
-    const morningAvg = morningLogs.length > 0 
-        ? morningLogs.reduce((sum, log) => sum + log.level, 0) / morningLogs.length 
+
+    const morningAvg = morningLogs.length > 0
+        ? morningLogs.reduce((sum, log) => sum + log.level, 0) / morningLogs.length
         : 0;
-    
-    const afternoonAvg = afternoonLogs.length > 0 
-        ? afternoonLogs.reduce((sum, log) => sum + log.level, 0) / afternoonLogs.length 
+
+    const afternoonAvg = afternoonLogs.length > 0
+        ? afternoonLogs.reduce((sum, log) => sum + log.level, 0) / afternoonLogs.length
         : 0;
-    
+
     // Find best morning and afternoon hours
     const findBestHour = (start, end) => {
         let bestHour = start;
         let bestAvg = 0;
-        
+
         for (let h = start; h < end; h++) {
             const hourLogs = energyLogs.filter(log => log.hour === h);
             if (hourLogs.length > 0) {
@@ -3184,18 +3650,18 @@ function generateEnergyInsights() {
                 }
             }
         }
-        
+
         return { hour: bestHour, avg: bestAvg };
     };
-    
+
     const bestMorning = findBestHour(6, 12);
     const bestAfternoon = findBestHour(12, 18);
-    
-    document.getElementById('bestMorning').textContent = 
+
+    document.getElementById('bestMorning').textContent =
         bestMorning.avg > 0 ? `${bestMorning.hour}:00 - ${bestMorning.hour + 2}:00` : 'Sin datos';
-    document.getElementById('bestAfternoon').textContent = 
+    document.getElementById('bestAfternoon').textContent =
         bestAfternoon.avg > 0 ? `${bestAfternoon.hour}:00 - ${bestAfternoon.hour + 2}:00` : 'Sin datos';
-    
+
     // Suggest task types
     if (morningAvg > afternoonAvg) {
         document.getElementById('complexTasksTime').textContent = 'Mañana';
@@ -3209,19 +3675,19 @@ function generateEnergyInsights() {
 function generateEnergyRecommendations() {
     const container = document.getElementById('energyRecommendations');
     if (!container) return;
-    
+
     const currentHour = new Date().getHours();
     const recentLogs = energyLogs.filter(log => {
         const logHour = new Date(log.timestamp).getHours();
         return logHour === currentHour;
     });
-    
-    const currentAvg = recentLogs.length > 0 
-        ? recentLogs.reduce((sum, log) => sum + log.level, 0) / recentLogs.length 
+
+    const currentAvg = recentLogs.length > 0
+        ? recentLogs.reduce((sum, log) => sum + log.level, 0) / recentLogs.length
         : 3;
-    
+
     let recommendations = [];
-    
+
     if (currentAvg <= 2) {
         recommendations = [
             {
@@ -3267,7 +3733,7 @@ function generateEnergyRecommendations() {
             }
         ];
     }
-    
+
     let html = '';
     recommendations.forEach(rec => {
         html += `
@@ -3280,7 +3746,7 @@ function generateEnergyRecommendations() {
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
 }
 
@@ -3347,36 +3813,36 @@ function setupKanbanDragAndDrop() {
             if (match) {
                 const id = parseInt(match[1]);
                 task.dataset.taskId = id;
-                
+
                 // Configurar event listeners programáticos
                 task.removeEventListener('dragstart', handleTaskDragStart);
                 task.addEventListener('dragstart', handleTaskDragStart);
-                
+
                 task.removeEventListener('dragend', dragEnd);
                 task.addEventListener('dragend', dragEnd);
             }
         }
     });
-    
+
     // Configurar event listeners para las columnas
     const columns = [
         { id: 'colPending', status: 'pending' },
         { id: 'colProgress', status: 'progress' },
         { id: 'colDone', status: 'done' }
     ];
-    
+
     columns.forEach(({ id, status }) => {
         const col = document.getElementById(id);
         if (col) {
             col.removeEventListener('dragover', allowDrop);
             col.addEventListener('dragover', allowDrop);
-            
+
             col.removeEventListener('dragenter', dragEnter);
             col.addEventListener('dragenter', dragEnter);
-            
+
             col.removeEventListener('dragleave', dragLeave);
             col.addEventListener('dragleave', dragLeave);
-            
+
             col.removeEventListener('drop', handleColumnDrop);
             col.addEventListener('drop', (e) => handleColumnDrop(e, status));
         }
@@ -3455,7 +3921,7 @@ function drop(e, status) {
         renderKanban();
         showNotification(`Tarea movida a ${getStatusLabel(status)}`);
     }
-    
+
     // Limpiar variable global
     draggedTaskId = null;
 
@@ -3549,8 +4015,8 @@ function renderTasks() {
                         </div>
                     </div>
                     <div class="task-actions" onclick="event.stopPropagation()">
-                        <button class="btn-icon" onclick="editTask(${t.id})">○</button>
-                        <button class="btn-icon delete" onclick="deleteTask(${t.id}, event)">×</button>
+                        <button class="btn-icon" onclick="editTask(${t.id})" data-tooltip="Editar">✏️</button>
+                        <button class="btn-icon delete" onclick="deleteTask(${t.id}, event)" data-tooltip="Eliminar">×</button>
                     </div>
                 </div>
             `).join('');
@@ -3564,14 +4030,14 @@ function initNotifications() {
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
-    
+
     // Load saved notifications
     const saved = localStorage.getItem('zenNotifications');
     if (saved) {
         notifications = JSON.parse(saved);
         renderNotifications();
     }
-    
+
     // Schedule task reminders
     scheduleTaskReminders();
 }
@@ -3591,17 +4057,17 @@ function addNotification(type, title, message, icon = '🔔') {
         time: new Date().toISOString(),
         read: false
     };
-    
+
     notifications.unshift(notification);
-    
+
     // Keep only last 50 notifications
     if (notifications.length > 50) {
         notifications = notifications.slice(0, 50);
     }
-    
+
     saveNotifications();
     renderNotifications();
-    
+
     // Show browser notification if permitted
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
@@ -3618,21 +4084,21 @@ function saveNotifications() {
 function renderNotifications() {
     const list = document.getElementById('notificationsList');
     const badge = document.getElementById('notificationBadge');
-    
+
     if (!list) return;
-    
+
     const unreadCount = notifications.filter(n => !n.read).length;
-    
+
     if (badge) {
         badge.textContent = unreadCount;
         badge.style.display = unreadCount > 0 ? 'inline' : 'none';
     }
-    
+
     if (notifications.length === 0) {
         list.innerHTML = '<div class="notification-empty">No hay notificaciones</div>';
         return;
     }
-    
+
     list.innerHTML = notifications.map(n => {
         const timeAgo = getTimeAgo(n.time);
         return `
@@ -3667,7 +4133,7 @@ function getTimeAgo(dateStr) {
     const now = new Date();
     const date = new Date(dateStr);
     const seconds = Math.floor((now - date) / 1000);
-    
+
     if (seconds < 60) return 'Hace un momento';
     if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`;
     if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} h`;
@@ -3678,18 +4144,18 @@ function scheduleTaskReminders() {
     // Clear existing timers
     notificationTimers.forEach(t => clearTimeout(t));
     notificationTimers = [];
-    
+
     // Check every minute for upcoming tasks
     const checkTasks = () => {
         const now = new Date();
-        
+
         tasks.forEach(task => {
             if (task.completed || !task.date || !task.time) return;
-            
+
             const taskDateTime = new Date(`${task.date}T${task.time}`);
             const diffMs = taskDateTime - now;
             const diffMinutes = Math.floor(diffMs / 60000);
-            
+
             // Notify 15 minutes before
             if (diffMinutes > 0 && diffMinutes <= 15 && diffMinutes > 14) {
                 addNotification(
@@ -3699,7 +4165,7 @@ function scheduleTaskReminders() {
                     '⏰'
                 );
             }
-            
+
             // Notify when due
             if (diffMinutes <= 0 && diffMinutes > -1) {
                 addNotification(
@@ -3710,7 +4176,7 @@ function scheduleTaskReminders() {
                 );
             }
         });
-        
+
         // Check habits for daily reminder
         const hour = now.getHours();
         if (hour === 9) { // Morning reminder
@@ -3727,7 +4193,7 @@ function scheduleTaskReminders() {
             });
         }
     };
-    
+
     // Check immediately then every minute
     checkTasks();
     const timer = setInterval(checkTasks, 60000);
@@ -3744,7 +4210,7 @@ function toggleTheme() {
 function toggleMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    
+
     if (sidebar.classList.contains('active')) {
         closeMobileSidebar();
     } else {
@@ -3757,7 +4223,7 @@ function toggleMobileSidebar() {
 function closeMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    
+
     sidebar.classList.remove('active');
     overlay.classList.remove('active');
     document.body.style.overflow = ''; // Restore scrolling
@@ -3833,6 +4299,30 @@ function switchSettingsTab(tabId, element) {
     // Update sections
     document.querySelectorAll('.settings-section').forEach(section => section.classList.remove('active'));
     document.getElementById(`settings-${tabId}`).classList.add('active');
+
+    // Load Time Blocking settings when tab is opened
+    if (tabId === 'timeblocking') {
+        loadTimeBlockingSettings();
+    }
+}
+
+function loadTimeBlockingSettings() {
+    const settings = JSON.parse(localStorage.getItem('zenTimeBlockingSettings') || '{}');
+    document.getElementById('tbStartTime').value = settings.startTime || '09:00';
+    document.getElementById('tbEndTime').value = settings.endTime || '18:00';
+}
+
+function saveTimeBlockingSettings() {
+    const startTime = document.getElementById('tbStartTime').value;
+    const endTime = document.getElementById('tbEndTime').value;
+
+    const settings = {
+        startTime: startTime,
+        endTime: endTime
+    };
+
+    localStorage.setItem('zenTimeBlockingSettings', JSON.stringify(settings));
+    showNotification('Configuración de Time Blocking guardada');
 }
 
 function toggleSetting(settingKey) {
