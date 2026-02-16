@@ -1,928 +1,1301 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zen Tasks - Gestión Completa</title>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>">
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700&display=swap"
-        rel="stylesheet" />
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- Chart.js for Statistics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel='stylesheet' href='css/styles.css'>
-</head>
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
 
-<body>
+  <body>
     <div class="app-container">
-        <!-- Sidebar (Desktop - Fixed Position) -->
-        <nav id="sidebar" class="sidebar">
-            <div class="sidebar-header logo-container p-3">
-                <div class="logo">
-                    <h1>Zen Tasks</h1>
-                    <p>Gestión de tareas</p>
-                </div>
-                <button class="sidebar-collapse-btn" onclick="toggleSidebar()">
-                    <span class="material-icons">chevron_left</span>
-                </button>
-            </div>
+      <!-- Sidebar (Desktop - Fixed Position) -->
+      <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header logo-container p-3">
+          <div class="logo">
+            <h1>Zen Tasks</h1>
+            <p>Gestión de tareas</p>
+          </div>
+          <button class="sidebar-collapse-btn" onclick="toggleSidebar()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+        </div>
 
-            <div class="sidebar-nav pt-3">
-                <ul class="nav flex-column main-nav">
-                    <!-- Core Views -->
-                    <li class="nav-section-title"><span>Principal</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="switchView('dashboard')">
-                            <span class="material-icons">dashboard</span> <span class="nav-text">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('calendar')">
-                            <span class="material-icons">calendar_today</span> <span class="nav-text">Calendario</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('schedule')">
-                            <span class="material-icons">schedule</span> <span class="nav-text">Horario</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('habits')">
-                            <span class="material-icons">check_circle</span> <span class="nav-text">Hábitos</span>
-                        </a>
-                    </li>
-
-                    <!-- Productivity Views -->
-                    <li class="nav-section-title"><span>Productividad</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('timeblocking')">
-                            <span class="material-icons">view_week</span> <span class="nav-text">Time Blocking</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('pomodoro')">
-                            <span class="material-icons">timer</span> <span class="nav-text">Pomodoro</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('focus')">
-                            <span class="material-icons">center_focus_strong</span> <span class="nav-text">Modo
-                                Enfoque</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('energy')">
-                            <span class="material-icons">bolt</span> <span class="nav-text">Energía</span>
-                        </a>
-                    </li>
-
-                    <!-- Analytics -->
-                    <li class="nav-section-title"><span>Análisis</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchView('stats')">
-                            <span class="material-icons">bar_chart</span> <span class="nav-text">Estadísticas</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="sidebar-footer p-3 mt-auto">
-                <div class="notification-btn-container mb-2">
-                    <button class="settings-btn w-100" onclick="toggleNotifications()">
-                        <span class="material-icons">notifications</span> <span class="nav-text">Notificaciones</span>
-                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                    </button>
-                    <div class="notifications-dropdown" id="notificationsDropdown">
-                        <div class="notifications-header">
-                            <span>Notificaciones</span>
-                            <button onclick="clearAllNotifications()">Limpiar todo</button>
-                        </div>
-                        <div class="notifications-list" id="notificationsList">
-                            <div class="notification-empty">No hay notificaciones</div>
-                        </div>
-                    </div>
-                </div>
-                <button class="settings-btn w-100 mb-2" onclick="openSettingsModal()">
-                    <span class="material-icons">settings</span> <span class="nav-text">Configuración</span>
-                </button>
-                <button class="theme-toggle w-100" onclick="toggleTheme()">
-                    <span class="material-icons">dark_mode</span>
-                    <span id="themeText" class="nav-text">Modo Oscuro</span>
-                </button>
-            </div>
-        </nav>
-
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Alternar Sidebar">
-                    <span class="material-icons">menu</span>
-                </button>
-
-            </div>
-            <div class="header-center">
-                <div class="screen-time-tracker" id="screenTimeTracker">
-                    <span class="material-icons">laptop</span>
-                    <span class="time-value" id="screenTimeDisplay">00:00</span>
-                    <button class="st-btn" id="screenTimePauseBtn" onclick="toggleScreenTimePause()"
-                        title="Pausar/Reanudar">
-                        <span class="material-icons" id="pauseIcon">pause</span>
-                    </button>
-                    <button class="st-btn" onclick="resetScreenTime()" title="Reiniciar">
-                        <span class="material-icons">refresh</span>
-                    </button>
-                </div>
-            </div>
-            <div class="header-right">
-                <button class="header-btn" onclick="openSettingsModal()" title="Configuración">
-                    <span class="material-icons">settings</span>
-                </button>
-                <button class="header-btn theme-toggle-header" onclick="toggleTheme()" title="Modo Oscuro">
-                    <span class="material-icons" id="headerThemeIcon">dark_mode</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- Bottom Navigation (Mobile Only) -->
-        <nav class="bottom-nav d-md-none">
-            <a href="#" class="bottom-nav-item active" onclick="switchView('dashboard')">
+        <div class="sidebar-nav pt-3">
+          <ul class="nav flex-column main-nav">
+            <!-- Core Views -->
+            <li class="nav-section-title"><span>Principal</span></li>
+            <li class="nav-item">
+              <a
+                class="nav-link active"
+                href="#"
+                onclick="switchView('dashboard')"
+              >
                 <span class="material-icons">dashboard</span>
-                <span class="label">Dashboard</span>
-            </a>
-            <a href="#" class="bottom-nav-item" onclick="switchView('calendar')">
+                <span class="nav-text">Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('calendar')">
                 <span class="material-icons">calendar_today</span>
-                <span class="label">Calendario</span>
-            </a>
-            <a href="#" class="bottom-nav-item" onclick="switchView('schedule')">
+                <span class="nav-text">Calendario</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('schedule')">
                 <span class="material-icons">schedule</span>
-                <span class="label">Horario</span>
-            </a>
-            <a href="#" class="bottom-nav-item" onclick="switchView('habits')">
+                <span class="nav-text">Horario</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('habits')">
                 <span class="material-icons">check_circle</span>
-                <span class="label">Hábitos</span>
-            </a>
-            <a href="#" class="bottom-nav-item" onclick="switchView('focus')">
+                <span class="nav-text">Hábitos</span>
+              </a>
+            </li>
+
+            <!-- Productivity Views -->
+            <li class="nav-section-title"><span>Productividad</span></li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('timeblocking')">
+                <span class="material-icons">view_week</span>
+                <span class="nav-text">Time Blocking</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('pomodoro')">
+                <span class="material-icons">timer</span>
+                <span class="nav-text">Pomodoro</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('focus')">
                 <span class="material-icons">center_focus_strong</span>
-                <span class="label">Enfoque</span>
-            </a>
-            <a href="#" class="bottom-nav-item" onclick="openSettingsModal()">
-                <span class="material-icons">settings</span>
-                <span class="label">Ajustes</span>
-            </a>
-        </nav>
+                <span class="nav-text">Modo Enfoque</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('energy')">
+                <span class="material-icons">bolt</span>
+                <span class="nav-text">Energía</span>
+              </a>
+            </li>
+
+            <!-- Analytics -->
+            <li class="nav-section-title"><span>Análisis</span></li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchView('stats')">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Estadísticas</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="sidebar-footer p-3 mt-auto">
+          <div class="notification-btn-container mb-2">
+            <button class="settings-btn w-100" onclick="toggleNotifications()">
+              <span class="material-icons">notifications</span>
+              <span class="nav-text">Notificaciones</span>
+              <span
+                class="notification-badge"
+                id="notificationBadge"
+                style="display: none"
+                >0</span
+              >
+            </button>
+            <div class="notifications-dropdown" id="notificationsDropdown">
+              <div class="notifications-header">
+                <span>Notificaciones</span>
+                <button onclick="clearAllNotifications()">Limpiar todo</button>
+              </div>
+              <div class="notifications-list" id="notificationsList">
+                <div class="notification-empty">No hay notificaciones</div>
+              </div>
+            </div>
+          </div>
+          <button class="settings-btn w-100 mb-2" onclick="openSettingsModal()">
+            <span class="material-icons">settings</span>
+            <span class="nav-text">Configuración</span>
+          </button>
+          <button class="theme-toggle w-100" onclick="toggleTheme()">
+            <span class="material-icons">dark_mode</span>
+            <span id="themeText" class="nav-text">Modo Oscuro</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Header -->
+      <header class="app-header d-none d-md-flex">
+        <div class="header-left">
+          <button
+            class="sidebar-toggle"
+            onclick="toggleSidebar()"
+            title="Alternar Sidebar"
+          >
+            <span class="material-icons">menu</span>
+          </button>
+        </div>
+        <div class="header-center">
+          <div class="screen-time-tracker" id="screenTimeTracker">
+            <span class="material-icons">laptop</span>
+            <span class="time-value" id="screenTimeDisplay">00:00</span>
+            <button
+              class="st-btn"
+              id="screenTimePauseBtn"
+              onclick="toggleScreenTimePause()"
+              title="Pausar/Reanudar"
+            >
+            <span class="material-icons" id="pauseIcon">pause</span>
+            </button>
+            <button
+              class="st-btn"
+              onclick="resetScreenTime()"
+              title="Reiniciar"
+            >
+              <span class="material-icons">refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="header-right">
+          <button
+            class="header-btn"
+            onclick="openSettingsModal()"
+            title="Configuración"
+          >
+            <span class="material-icons">settings</span>
+          </button>
+          <button
+            class="header-btn theme-toggle-header"
+            onclick="toggleTheme()"
+            title="Modo Oscuro"
+          >
+            <span class="material-icons" id="headerThemeIcon">dark_mode</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Bottom Navigation (Mobile Only) -->
+      <nav class="bottom-nav d-md-none">
+        <a
+          href="#"
+          class="bottom-nav-item active"
+          onclick="switchView('dashboard')"
+        >
+          <span class="material-icons">dashboard</span>
+          <span class="label">Dashboard</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="switchView('calendar')">
+          <span class="material-icons">calendar_today</span>
+          <span class="label">Calendario</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="switchView('schedule')">
+          <span class="material-icons">schedule</span>
+          <span class="label">Horario</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="switchView('habits')">
+          <span class="material-icons">check_circle</span>
+          <span class="label">Hábitos</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="switchView('focus')">
+          <span class="material-icons">center_focus_strong</span>
+          <span class="label">Enfoque</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="openSettingsModal()">
+          <span class="material-icons">settings</span>
+          <span class="label">Ajustes</span>
+        </a>
+      </nav>
     </div>
 
     <!-- Main Content Area -->
     <main class="main-content">
-        <div class="page-shell">
-            <!-- Mobile Header (Simplified) -->
-            <div id="mobile-header"
-                class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom d-md-none">
-                <div class="d-flex align-items-center">
-                    <button class="menu-toggle" onclick="toggleMobileSidebar()">
-                        <span class="material-icons">menu</span>
-                    </button>
-                    <h1 class="h2 ms-2">Zen Tasks</h1>
+      <div class="page-shell">
+        <!-- Mobile Header (Simplified) -->
+        <div
+          id="mobile-header"
+          class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom d-block d-md-none"
+        >
+          <div class="d-flex align-items-center">
+            <button class="menu-toggle" onclick="toggleMobileSidebar()">
+              <span class="material-icons">menu</span>
+            </button>
+            <h1 class="h2 ms-2">Zen Tasks</h1>
+          </div>
+          <button
+            class="theme-toggle-mobile btn btn-sm btn-outline-secondary"
+            onclick="toggleTheme()"
+          >
+            <span class="material-icons" style="font-size: 1.2rem"
+              >dark_mode</span
+            >
+          </button>
+        </div>
+
+
+
+        <!-- ============================================ -->
+        <!-- VISTA DASHBOARD (Principal) -->
+        <!-- ============================================ -->
+        <div id="dashboard-view" class="dashboard-grid view-section">
+          <!-- Welcome Greeting Section -->
+          <div class="welcome-container mb-4">
+            <div class="welcome-text">
+              <h2 id="greeting-title">Hola, Youri 👋</h2>
+              <p class="text-muted">Aquí tienes un resumen de tu día.</p>
+            </div>
+            <div class="date-display" id="header-date"></div>
+          </div>
+
+          <!-- Kanban Board -->
+          <div class="card kanban-card">
+            <div class="card-header">
+              <div class="card-title"><span>◈</span> Tablero Kanban</div>
+              <div class="kanban-controls">
+                <div class="search-box">
+                  <input
+                    type="text"
+                    placeholder="Buscar tareas..."
+                    id="kanbanSearch"
+                    oninput="filterKanban(this.value)"
+                  />
                 </div>
-                <button class="theme-toggle-mobile btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
-                    <span class="material-icons" style="font-size: 1.2rem;">dark_mode</span>
+                <button class="btn-secondary" onclick="clearKanbanSearch()">
+                  Limpiar
                 </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="kanban-container">
+                <!-- Columna: Por Hacer -->
+                <div
+                  class="kanban-column kanban-pending"
+                  id="colPending"
+                  data-status="pending"
+                >
+                  <div class="kanban-header"><span>⏳</span> Por Hacer</div>
+                  <div id="kanbanPending"></div>
+                  <button class="add-task-btn" onclick="openModal('kanban')">
+                    Agregar tarea
+                  </button>
+                </div>
+                <!-- Columna: En Proceso -->
+                <div
+                  class="kanban-column kanban-progress"
+                  id="colProgress"
+                  data-status="progress"
+                >
+                  <div class="kanban-header"><span>▶</span> En Proceso</div>
+                  <div id="kanbanProgress"></div>
+                  <button
+                    class="add-task-btn"
+                    onclick="openModal('kanban', 'progress')"
+                  >
+                    Agregar tarea
+                  </button>
+                </div>
+                <!-- Columna: Completadas -->
+                <div
+                  class="kanban-column kanban-done"
+                  id="colDone"
+                  data-status="done"
+                >
+                  <div class="kanban-header"><span>✔</span> Completadas</div>
+                  <div id="kanbanDone"></div>
+                  <button
+                    class="add-task-btn"
+                    onclick="openModal('kanban', 'done')"
+                  >
+                    Agregar tarea
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar (Mini) -->
+          <div class="right-column">
+            <div class="card calendar-card">
+              <div class="card-header">
+                <div class="card-title"><span>◐</span> Calendario</div>
+              </div>
+              <div class="card-body">
+                <div class="calendar-nav">
+                  <div class="calendar-views">
+                    <button
+                      class="view-btn"
+                      id="viewDay"
+                      onclick="setCalendarView('day')"
+                    >
+                      Día
+                    </button>
+                    <button
+                      class="view-btn"
+                      id="viewWeek"
+                      onclick="setCalendarView('week')"
+                    >
+                      Semana
+                    </button>
+                    <button
+                      class="view-btn active"
+                      id="viewMonth"
+                      onclick="setCalendarView('month')"
+                    >
+                      Mes
+                    </button>
+                  </div>
+                  <div class="calendar-nav-arrows">
+                    <button class="nav-arrow" onclick="navigateCalendar(-1)">
+                      ◀
+                    </button>
+                    <span class="current-period" id="currentPeriod"></span>
+                    <button class="nav-arrow" onclick="navigateCalendar(1)">
+                      ▶
+                    </button>
+                  </div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Habits & Tasks - 50/50 Split -->
+          <div class="habits-tasks-row">
+            <!-- Hábitos -->
+            <div class="card habits-card">
+              <div class="card-header">
+                <div class="card-title"><span>◉</span> Hábitos</div>
+                <button class="btn-secondary" onclick="openModal('habit')">
+                  + Nuevo
+                </button>
+              </div>
+              <div class="card-body" id="habitsList"></div>
             </div>
 
-            <!-- Desktop Header (Hidden on Mobile) -->
-            <header class="main-header d-none d-md-flex">
-                <div class="header-left">
-                    <h1>Tablero de Tareas</h1>
+            <!-- Lista de Tareas -->
+            <div class="card tasks-card">
+              <div class="card-header">
+                <div class="card-title"><span>◑</span> Mis Tareas</div>
+                <div style="display: flex; gap: 8px">
+                  <div class="search-box">
+                    <input
+                      type="text"
+                      placeholder="Buscar tareas..."
+                      oninput="searchTasks(this.value)"
+                    />
+                  </div>
                 </div>
-            </header>
-
-            <!-- ============================================ -->
-            <!-- VISTA DASHBOARD (Principal) -->
-            <!-- ============================================ -->
-            <div id="dashboard-view" class="dashboard-grid view-section">
-            <!-- Welcome Greeting Section -->
-            <div class="welcome-container mb-4">
-                <div class="welcome-text">
-                    <h2 id="greeting-title">Hola, Youri 👋</h2>
-                    <p class="text-muted">Aquí tienes un resumen de tu día.</p>
+              </div>
+              <div class="card-body">
+                <div class="filters" style="margin-bottom: 16px">
+                  <button
+                    class="filter-btn active"
+                    onclick="setFilter('all', this)"
+                  >
+                    Todas
+                  </button>
+                  <button
+                    class="filter-btn"
+                    onclick="setFilter('pending', this)"
+                  >
+                    Pendientes
+                  </button>
+                  <button
+                    class="filter-btn"
+                    onclick="setFilter('completed', this)"
+                  >
+                    Completadas
+                  </button>
+                  <button class="filter-btn" onclick="setFilter('today', this)">
+                    Hoy
+                  </button>
                 </div>
-                <div class="date-display" id="header-date"></div>
+                <div class="tasks-list" id="tasksList"></div>
+              </div>
             </div>
-
-            <!-- Kanban Board -->
-            <div class="card kanban-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>◈</span> Tablero Kanban
-                    </div>
-                    <div class="kanban-controls">
-                        <div class="search-box">
-                            <input type="text" placeholder="Buscar tareas..." id="kanbanSearch"
-                                oninput="filterKanban(this.value)">
-                        </div>
-                        <button class="btn-secondary" onclick="clearKanbanSearch()">Limpiar</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="kanban-container">
-                        <!-- Columna: Por Hacer -->
-                        <div class="kanban-column kanban-pending" id="colPending" data-status="pending">
-                            <div class="kanban-header"><span>⏳</span> Por Hacer</div>
-                            <div id="kanbanPending"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban', )"> Agregar tarea</button>
-                        </div>
-                        <!-- Columna: En Proceso -->
-                        <div class="kanban-column kanban-progress" id="colProgress" data-status="progress">
-                            <div class="kanban-header"><span>▶</span> En Proceso</div>
-                            <div id="kanbanProgress"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban', 'progress')">Agregar
-                                tarea</button>
-                        </div>
-                        <!-- Columna: Completadas -->
-                        <div class="kanban-column kanban-done" id="colDone" data-status="done">
-                            <div class="kanban-header"><span>✔</span> Completadas</div>
-                            <div id="kanbanDone"></div>
-                            <button class="add-task-btn" onclick="openModal('kanban', 'done')">Agregar tarea</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Calendar (Mini) -->
-            <div class="right-column">
-                <div class="card calendar-card">
-                    <div class="card-header">
-                        <div class="card-title"><span>◐</span> Calendario</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="calendar-nav">
-                            <div class="calendar-views">
-                                <button class="view-btn" id="viewDay" onclick="setCalendarView('day')">Día</button>
-                                <button class="view-btn" id="viewWeek" onclick="setCalendarView('week')">Semana</button>
-                                <button class="view-btn active" id="viewMonth"
-                                    onclick="setCalendarView('month')">Mes</button>
-                            </div>
-                            <div class="calendar-nav-arrows">
-                                <button class="nav-arrow" onclick="navigateCalendar(-1)">◀</button>
-                                <span class="current-period" id="currentPeriod"></span>
-                                <button class="nav-arrow" onclick="navigateCalendar(1)">▶</button>
-                            </div>
-                        </div>
-                        <div class="calendar-grid" id="calendarGrid"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Habits & Tasks - 50/50 Split -->
-            <div class="habits-tasks-row">
-                <!-- Hábitos -->
-                <div class="card habits-card">
-                    <div class="card-header">
-                        <div class="card-title"><span>◉</span> Hábitos</div>
-                        <button class="btn-secondary" onclick="openModal('habit')">+ Nuevo</button>
-                    </div>
-                    <div class="card-body" id="habitsList"></div>
-                </div>
-
-                <!-- Lista de Tareas -->
-                <div class="card tasks-card">
-                    <div class="card-header">
-                        <div class="card-title"><span>◑</span> Mis Tareas</div>
-                        <div style="display: flex; gap: 8px;">
-                            <div class="search-box">
-                                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="filters" style="margin-bottom: 16px;">
-                            <button class="filter-btn active" onclick="setFilter('all', this)">Todas</button>
-                            <button class="filter-btn" onclick="setFilter('pending', this)">Pendientes</button>
-                            <button class="filter-btn" onclick="setFilter('completed', this)">Completadas</button>
-                            <button class="filter-btn" onclick="setFilter('today', this)">Hoy</button>
-                        </div>
-                        <div class="tasks-list" id="tasksList"></div>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA CALENDARIO -->
         <!-- ============================================ -->
-        <div id="calendar-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>📅</span> Calendario</div>
-                </div>
-                <div class="card-body">
-                    <div class="calendar-full">
-                        <div class="calendar-nav">
-                            <div class="calendar-views">
-                                <button class="view-btn" onclick="setCalendarView('day')">Día</button>
-                                <button class="view-btn" onclick="setCalendarView('week')">Semana</button>
-                                <button class="view-btn active" onclick="setCalendarView('month')">Mes</button>
-                            </div>
-                            <div class="calendar-nav-arrows">
-                                <button class="nav-arrow" onclick="navigateCalendar(-1)">◀</button>
-                                <span class="current-period" id="currentPeriodFull"></span>
-                                <button class="nav-arrow" onclick="navigateCalendar(1)">▶</button>
-                            </div>
-                        </div>
-                        <div class="calendar-grid" id="calendarGridFull"></div>
-                    </div>
-                </div>
+        <div id="calendar-view" class="view-section" style="display: none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span>📅</span> Calendario</div>
             </div>
+            <div class="card-body">
+              <div class="calendar-full">
+                <div class="calendar-nav">
+                  <div class="calendar-views">
+                    <button class="view-btn" onclick="setCalendarView('day')">
+                      Día
+                    </button>
+                    <button class="view-btn" onclick="setCalendarView('week')">
+                      Semana
+                    </button>
+                    <button
+                      class="view-btn active"
+                      onclick="setCalendarView('month')"
+                    >
+                      Mes
+                    </button>
+                  </div>
+                  <div class="calendar-nav-arrows">
+                    <button class="nav-arrow" onclick="navigateCalendar(-1)">
+                      ◀
+                    </button>
+                    <span class="current-period" id="currentPeriodFull"></span>
+                    <button class="nav-arrow" onclick="navigateCalendar(1)">
+                      ▶
+                    </button>
+                  </div>
+                </div>
+                <div class="calendar-grid" id="calendarGridFull"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA HORARIO SEMANAL -->
         <!-- ============================================ -->
-        <div id="schedule-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>🕒</span> Horario Semanal</div>
-                    <button class="btn" onclick="openModal('schedule')"><span>+</span> Agregar Actividad</button>
-                </div>
-                <div class="card-body">
-                    <div class="schedule-grid">
-                        <div class="schedule-header-cell time-col">Hora</div>
-                        <div class="schedule-header-cell">Lunes</div>
-                        <div class="schedule-header-cell">Martes</div>
-                        <div class="schedule-header-cell">Miércoles</div>
-                        <div class="schedule-header-cell">Jueves</div>
-                        <div class="schedule-header-cell">Viernes</div>
-                        <div class="schedule-header-cell">Sábado</div>
-                        <div class="schedule-header-cell">Domingo</div>
-                        <div id="schedule-grid-content" class="schedule-content"></div>
-                    </div>
-                </div>
+        <div id="schedule-view" class="view-section" style="display: none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span>🕒</span> Horario Semanal</div>
+              <button class="btn" onclick="openModal('schedule')">
+                <span>+</span> Agregar Actividad
+              </button>
             </div>
+            <div class="card-body">
+              <div class="schedule-grid">
+                <div class="schedule-header-cell time-col">Hora</div>
+                <div class="schedule-header-cell">Lunes</div>
+                <div class="schedule-header-cell">Martes</div>
+                <div class="schedule-header-cell">Miércoles</div>
+                <div class="schedule-header-cell">Jueves</div>
+                <div class="schedule-header-cell">Viernes</div>
+                <div class="schedule-header-cell">Sábado</div>
+                <div class="schedule-header-cell">Domingo</div>
+                <div id="schedule-grid-content" class="schedule-content"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA HÁBITOS -->
         <!-- ============================================ -->
-        <div id="habits-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>🎯</span> Seguimiento de Hábitos</div>
-                    <button class="btn-primary" onclick="openModal('habit')"><span>+</span> Nuevo Hábito</button>
-                </div>
-                <div class="card-body">
-                    <div id="habitsListFull"></div>
-                </div>
+        <div id="habits-view" class="view-section" style="display: none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>🎯</span> Seguimiento de Hábitos
+              </div>
+              <button class="btn-primary" onclick="openModal('habit')">
+                <span>+</span> Nuevo Hábito
+              </button>
             </div>
+            <div class="card-body">
+              <div id="habitsListFull"></div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA TIME BLOCKING -->
         <!-- ============================================ -->
-        <div id="timeblocking-view" class="view-section" style="display: none;">
-            <div class="tb-container">
-                <div class="tb-header">
-                    <div class="tb-header-left">
-                        <h1 class="tb-title">Weekly Planner</h1>
-                    </div>
-                    <div class="tb-header-center">
-                        <button class="tb-nav-btn" onclick="navigateTBWeek(-1)">
-                            <span class="material-icons">chevron_left</span>
-                        </button>
-                        <div class="tb-week-label">
-                            <span class="material-icons">calendar_today</span>
-                            <span id="tbWeekLabel">Nov 18 - 24, 2023</span>
-                        </div>
-                        <button class="tb-nav-btn" onclick="navigateTBWeek(1)">
-                            <span class="material-icons">chevron_right</span>
-                        </button>
-                    </div>
-                    <div class="tb-header-right">
-                        <button class="tb-add-btn" onclick="generateTimeBlocking()">
-                            <span class="material-icons">add</span>
-                            Generar
-                        </button>
-                    </div>
+        <div id="timeblocking-view" class="view-section" style="display: none">
+          <div class="tb-container">
+            <div class="tb-header">
+              <div class="tb-header-left">
+                <h1 class="tb-title">Weekly Planner</h1>
+              </div>
+              <div class="tb-header-center">
+                <button class="tb-nav-btn" onclick="navigateTBWeek(-1)">
+                  <span class="material-icons">chevron_left</span>
+                </button>
+                <div class="tb-week-label">
+                  <span class="material-icons">calendar_today</span>
+                  <span id="tbWeekLabel">Nov 18 - 24, 2023</span>
                 </div>
-
-                <div class="tb-main">
-                    <div class="tb-calendar-wrapper">
-                        <div class="tb-calendar-header">
-                            <div class="tb-time-gmt">GMT-5</div>
-                            <div class="tb-day-header" data-day="0">
-                                <div class="tb-day-name">Lun</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header" data-day="1">
-                                <div class="tb-day-name">Mar</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header" data-day="2">
-                                <div class="tb-day-name">Mié</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header" data-day="3">
-                                <div class="tb-day-name">Jue</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header" data-day="4">
-                                <div class="tb-day-name">Vie</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header tb-day-weekend" data-day="5">
-                                <div class="tb-day-name">Sáb</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                            <div class="tb-day-header tb-day-weekend" data-day="6">
-                                <div class="tb-day-name">Dom</div>
-                                <div class="tb-day-num">-</div>
-                            </div>
-                        </div>
-
-                        <div class="tb-calendar-body">
-                            <div class="tb-time-column" id="tbTimeColumn"></div>
-                            <div class="tb-grid-lines" id="tbGridLines"></div>
-                            <div class="tb-current-time-line" id="tbCurrentTimeLine" style="display: none;">
-                                <div class="tb-current-dot"></div>
-                                <div class="tb-current-line"></div>
-                            </div>
-                            <div class="tb-blocks-container" id="tbBlocksContainer"></div>
-                        </div>
-                    </div>
-
-                    <div class="tb-sidebar">
-                        <div class="tb-backlog">
-                            <div class="tb-backlog-header">
-                                <h2>Pendientes</h2>
-                                <span class="tb-backlog-count" id="tbBacklogCount">0</span>
-                            </div>
-                            <p class="tb-backlog-hint">Arrastra al calendario</p>
-                            <div class="tb-backlog-list" id="tbBacklogList"></div>
-                        </div>
-
-                        <div class="tb-stats-card">
-                            <div class="tb-stats-header">
-                                <h2>Tiempo de Foco</h2>
-                                <span class="tb-stats-trend" id="tbStatsTrend">+0%</span>
-                            </div>
-                            <div class="tb-stats-main">
-                                <div class="tb-stats-hours" id="totalPlannedTime">0h</div>
-                                <div class="tb-stacks-chart">
-                                    <div class="tb-stack-bar" style="height: 40%"></div>
-                                    <div class="tb-stack-bar" style="height: 70%"></div>
-                                    <div class="tb-stack-bar" style="height: 50%"></div>
-                                    <div class="tb-stack-bar tb-stack-active" style="height: 100%"></div>
-                                </div>
-                            </div>
-                            <div class="tb-stats-footer">
-                                <div class="tb-stat-item">
-                                    <span class="tb-stat-icon">📊</span>
-                                    <span class="tb-stat-label">Tareas:</span>
-                                    <span class="tb-stat-value" id="totalTasksCount">0</span>
-                                </div>
-                                <div class="tb-stat-item">
-                                    <span class="tb-stat-icon">🎯</span>
-                                    <span class="tb-stat-label">Productividad:</span>
-                                    <span class="tb-stat-value" id="focusTimePercent">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <button class="tb-nav-btn" onclick="navigateTBWeek(1)">
+                  <span class="material-icons">chevron_right</span>
+                </button>
+              </div>
+              <div class="tb-header-right">
+                <button class="tb-add-btn" onclick="generateTimeBlocking()">
+                  <span class="material-icons">add</span>
+                  Generar
+                </button>
+              </div>
             </div>
+
+            <div class="tb-main">
+              <div class="tb-calendar-wrapper">
+                <div class="tb-calendar-header">
+                  <div class="tb-time-gmt">GMT-5</div>
+                  <div class="tb-day-header" data-day="0">
+                    <div class="tb-day-name">Lun</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header" data-day="1">
+                    <div class="tb-day-name">Mar</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header" data-day="2">
+                    <div class="tb-day-name">Mié</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header" data-day="3">
+                    <div class="tb-day-name">Jue</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header" data-day="4">
+                    <div class="tb-day-name">Vie</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header tb-day-weekend" data-day="5">
+                    <div class="tb-day-name">Sáb</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                  <div class="tb-day-header tb-day-weekend" data-day="6">
+                    <div class="tb-day-name">Dom</div>
+                    <div class="tb-day-num">-</div>
+                  </div>
+                </div>
+
+                <div class="tb-calendar-body">
+                  <div class="tb-time-column" id="tbTimeColumn"></div>
+                  <div class="tb-grid-lines" id="tbGridLines"></div>
+                  <div
+                    class="tb-current-time-line"
+                    id="tbCurrentTimeLine"
+                    style="display: none"
+                  >
+                    <div class="tb-current-dot"></div>
+                    <div class="tb-current-line"></div>
+                  </div>
+                  <div class="tb-blocks-container" id="tbBlocksContainer"></div>
+                </div>
+              </div>
+
+              <div class="tb-sidebar">
+                <div class="tb-backlog">
+                  <div class="tb-backlog-header">
+                    <h2>Pendientes</h2>
+                    <span class="tb-backlog-count" id="tbBacklogCount">0</span>
+                  </div>
+                  <p class="tb-backlog-hint">Arrastra al calendario</p>
+                  <div class="tb-backlog-list" id="tbBacklogList"></div>
+                </div>
+
+                <div class="tb-stats-card">
+                  <div class="tb-stats-header">
+                    <h2>Tiempo de Foco</h2>
+                    <span class="tb-stats-trend" id="tbStatsTrend">+0%</span>
+                  </div>
+                  <div class="tb-stats-main">
+                    <div class="tb-stats-hours" id="totalPlannedTime">0h</div>
+                    <div class="tb-stacks-chart">
+                      <div class="tb-stack-bar" style="height: 40%"></div>
+                      <div class="tb-stack-bar" style="height: 70%"></div>
+                      <div class="tb-stack-bar" style="height: 50%"></div>
+                      <div
+                        class="tb-stack-bar tb-stack-active"
+                        style="height: 100%"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="tb-stats-footer">
+                    <div class="tb-stat-item">
+                      <span class="tb-stat-icon">📊</span>
+                      <span class="tb-stat-label">Tareas:</span>
+                      <span class="tb-stat-value" id="totalTasksCount">0</span>
+                    </div>
+                    <div class="tb-stat-item">
+                      <span class="tb-stat-icon">🎯</span>
+                      <span class="tb-stat-label">Productividad:</span>
+                      <span class="tb-stat-value" id="focusTimePercent"
+                        >0%</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA POMODORO -->
         <!-- ============================================ -->
-        <div id="pomodoro-view" class="view-section" style="display: none;">
-            <div class="pomodoro-container">
-                <div class="pomodoro-main">
-                    <div class="pomodoro-timer">
-                        <div class="timer-display" id="pomodoroTimer">25:00</div>
-                        <div class="timer-session-type" id="sessionType">Trabajo</div>
-                    </div>
-                    <div class="pomodoro-task-info">
-                        <h3 id="pomodoroTaskTitle">Selecciona una tarea</h3>
-                        <div class="task-selector">
-                            <select id="pomodoroTaskSelect" class="form-select">
-                                <option value="">Elige una tarea...</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="pomodoro-controls">
-                        <button class="pomodoro-btn primary" id="pomodoroStartBtn" onclick="togglePomodoro()">
-                            <span>▶</span> Iniciar
-                        </button>
-                        <button class="pomodoro-btn secondary" id="pomodoroPauseBtn" onclick="pausePomodoro()"
-                            style="display: none;">
-                            <span>⏸</span> Pausar
-                        </button>
-                        <button class="pomodoro-btn secondary" onclick="resetPomodoro()">
-                            <span>🔄</span> Reiniciar
-                        </button>
-                    </div>
+        <div id="pomodoro-view" class="view-section" style="display: none">
+          <div class="pomodoro-container">
+            <div class="pomodoro-main">
+              <div class="pomodoro-timer">
+                <div class="timer-display" id="pomodoroTimer">25:00</div>
+                <div class="timer-session-type" id="sessionType">Trabajo</div>
+              </div>
+              <div class="pomodoro-task-info">
+                <h3 id="pomodoroTaskTitle">Selecciona una tarea</h3>
+                <div class="task-selector">
+                  <select id="pomodoroTaskSelect" class="form-select">
+                    <option value="">Elige una tarea...</option>
+                  </select>
                 </div>
-                <div class="pomodoro-stats">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-number" id="todayPomodoros">0</div>
-                            <div class="stat-label">Pomodoros Hoy</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="todayFocusTime">0h 0m</div>
-                            <div class="stat-label">Tiempo Foco</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="currentStreak">0</div>
-                            <div class="stat-label">Racha Actual</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="pomodoro-settings">
-                    <div class="settings-group">
-                        <label class="setting-label">Duración Trabajo:</label>
-                        <div class="duration-selector">
-                            <button class="duration-btn" onclick="setPomodoroDuration(25)"
-                                data-duration="25">25</button>
-                            <button class="duration-btn" onclick="setPomodoroDuration(45)"
-                                data-duration="45">45</button>
-                            <button class="duration-btn" onclick="setPomodoroDuration(60)"
-                                data-duration="60">60</button>
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <label class="setting-label">Duración Descanso:</label>
-                        <div class="duration-selector">
-                            <button class="duration-btn" onclick="setBreakDuration(5)" data-break="5">5</button>
-                            <button class="duration-btn" onclick="setBreakDuration(10)" data-break="10">10</button>
-                            <button class="duration-btn" onclick="setBreakDuration(15)" data-break="15">15</button>
-                        </div>
-                    </div>
-                </div>
+              </div>
+              <div class="pomodoro-controls">
+                <button
+                  class="pomodoro-btn primary"
+                  id="pomodoroStartBtn"
+                  onclick="togglePomodoro()"
+                >
+                  <span>▶</span> Iniciar
+                </button>
+                <button
+                  class="pomodoro-btn secondary"
+                  id="pomodoroPauseBtn"
+                  onclick="pausePomodoro()"
+                  style="display: none"
+                >
+                  <span>⏸</span> Pausar
+                </button>
+                <button
+                  class="pomodoro-btn secondary"
+                  onclick="resetPomodoro()"
+                >
+                  <span>🔄</span> Reiniciar
+                </button>
+              </div>
             </div>
+            <div class="pomodoro-stats">
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-number" id="todayPomodoros">0</div>
+                  <div class="stat-label">Pomodoros Hoy</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-number" id="todayFocusTime">0h 0m</div>
+                  <div class="stat-label">Tiempo Foco</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-number" id="currentStreak">0</div>
+                  <div class="stat-label">Racha Actual</div>
+                </div>
+              </div>
+            </div>
+            <div class="pomodoro-settings">
+              <div class="settings-group">
+                <label class="setting-label">Duración Trabajo:</label>
+                <div class="duration-selector">
+                  <button
+                    class="duration-btn"
+                    onclick="setPomodoroDuration(25)"
+                    data-duration="25"
+                  >
+                    25
+                  </button>
+                  <button
+                    class="duration-btn"
+                    onclick="setPomodoroDuration(45)"
+                    data-duration="45"
+                  >
+                    45
+                  </button>
+                  <button
+                    class="duration-btn"
+                    onclick="setPomodoroDuration(60)"
+                    data-duration="60"
+                  >
+                    60
+                  </button>
+                </div>
+              </div>
+              <div class="settings-group">
+                <label class="setting-label">Duración Descanso:</label>
+                <div class="duration-selector">
+                  <button
+                    class="duration-btn"
+                    onclick="setBreakDuration(5)"
+                    data-break="5"
+                  >
+                    5
+                  </button>
+                  <button
+                    class="duration-btn"
+                    onclick="setBreakDuration(10)"
+                    data-break="10"
+                  >
+                    10
+                  </button>
+                  <button
+                    class="duration-btn"
+                    onclick="setBreakDuration(15)"
+                    data-break="15"
+                  >
+                    15
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA MODO ENFOQUE (FOCUS) -->
         <!-- ============================================ -->
-        <div id="focus-view" class="view-section"
-            style="display: none; height: 100vh; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
-            <div class="focus-container" style="max-width: 600px; width: 100%;">
-                <div style="margin-bottom: 2rem;">
-                    <span style="font-size: 1.2rem; opacity: 0.7; letter-spacing: 2px;">MODO ENFOQUE</span>
-                </div>
-                <h1 id="focusTaskTitle" style="font-size: 3rem; margin-bottom: 2rem; line-height: 1.2;">Selecciona una
-                    tarea</h1>
-                <div id="focusTimerDisplay"
-                    style="font-size: 6rem; font-weight: bold; font-family: monospace; margin-bottom: 2rem; color: var(--primary);">
-                    25:00</div>
-                <div class="focus-controls"
-                    style="display: flex; gap: 20px; justify-content: center; margin-bottom: 3rem;">
-                    <button class="btn-primary" onclick="toggleTimer()"
-                        style="padding: 1rem 3rem; font-size: 1.5rem; border-radius: 50px;">
-                        <span id="focusPlayIcon">▶</span> <span id="focusBtnText">Iniciar</span>
-                    </button>
-                    <button class="btn-secondary" onclick="stopTimer()"
-                        style="width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem;">⏹</button>
-                </div>
-                <div class="focus-actions" style="display: flex; gap: 15px; justify-content: center;">
-                    <button class="btn-primary" onclick="completeFocusTask()" style="background: var(--success);">✔
-                        Completar Tarea</button>
-                    <button class="btn-secondary" onclick="exitFocusMode()">Salir del Modo Zen</button>
-                </div>
+        <div
+          id="focus-view"
+          class="view-section"
+          style="
+            display: none;
+            height: 100vh;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+          "
+        >
+          <div class="focus-container" style="max-width: 600px; width: 100%">
+            <div style="margin-bottom: 2rem">
+              <span style="font-size: 1.2rem; opacity: 0.7; letter-spacing: 2px"
+                >MODO ENFOQUE</span
+              >
             </div>
+            <h1
+              id="focusTaskTitle"
+              style="font-size: 3rem; margin-bottom: 2rem; line-height: 1.2"
+            >
+              Selecciona una tarea
+            </h1>
+            <div
+              id="focusTimerDisplay"
+              style="
+                font-size: 6rem;
+                font-weight: bold;
+                font-family: monospace;
+                margin-bottom: 2rem;
+                color: var(--primary);
+              "
+            >
+              25:00
+            </div>
+            <div
+              class="focus-controls"
+              style="
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                margin-bottom: 3rem;
+              "
+            >
+              <button
+                class="btn-primary"
+                onclick="toggleTimer()"
+                style="
+                  padding: 1rem 3rem;
+                  font-size: 1.5rem;
+                  border-radius: 50px;
+                "
+              >
+                <span id="focusPlayIcon">▶</span>
+                <span id="focusBtnText">Iniciar</span>
+              </button>
+              <button
+                class="btn-secondary"
+                onclick="stopTimer()"
+                style="
+                  width: 60px;
+                  height: 60px;
+                  border-radius: 50%;
+                  font-size: 1.5rem;
+                "
+              >
+                ⏹
+              </button>
+            </div>
+            <div
+              class="focus-actions"
+              style="display: flex; gap: 15px; justify-content: center"
+            >
+              <button
+                class="btn-primary"
+                onclick="completeFocusTask()"
+                style="background: var(--success)"
+              >
+                ✔ Completar Tarea
+              </button>
+              <button class="btn-secondary" onclick="exitFocusMode()">
+                Salir del Modo Zen
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA ENERGY MANAGEMENT -->
         <!-- ============================================ -->
-        <div id="energy-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>⚡</span> Energy Management - Optimiza Tu Energía</div>
-                    <div class="energy-controls">
-                        <button class="btn-primary" onclick="logEnergyLevel()"><span>📊</span> Registrar Mi
-                            Energía</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="energy-chart" id="energyChart"></div>
-                    <div class="energy-insights">
-                        <h3>💡 Insights de Energía</h3>
-                        <div class="insights-grid">
-                            <div class="insight-card">
-                                <div class="insight-icon">🌅</div>
-                                <div class="insight-title">Tu mejor mañana</div>
-                                <div class="insight-value" id="bestMorning">9:00 - 11:00</div>
-                            </div>
-                            <div class="insight-card">
-                                <div class="insight-icon">☀️</div>
-                                <div class="insight-title">Tu mejor tarde</div>
-                                <div class="insight-value" id="bestAfternoon">14:00 - 16:00</div>
-                            </div>
-                            <div class="insight-card">
-                                <div class="insight-icon">🧠</div>
-                                <div class="insight-title">Tareas complejas</div>
-                                <div class="insight-value" id="complexTasksTime">Mañana</div>
-                            </div>
-                            <div class="insight-card">
-                                <div class="insight-icon">📝</div>
-                                <div class="insight-title">Tareas ligeras</div>
-                                <div class="insight-value" id="lightTasksTime">Tarde</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="energy-recommendations">
-                        <h3>🎯 Recomendaciones para Hoy</h3>
-                        <div id="energyRecommendations" class="recommendations-list"></div>
-                    </div>
-                </div>
+        <div id="energy-view" class="view-section" style="display: none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>⚡</span> Energy Management - Optimiza Tu Energía
+              </div>
+              <div class="energy-controls">
+                <button class="btn-primary" onclick="logEnergyLevel()">
+                  <span>📊</span> Registrar Mi Energía
+                </button>
+              </div>
             </div>
+            <div class="card-body">
+              <div class="energy-chart" id="energyChart"></div>
+              <div class="energy-insights">
+                <h3>💡 Insights de Energía</h3>
+                <div class="insights-grid">
+                  <div class="insight-card">
+                    <div class="insight-icon">🌅</div>
+                    <div class="insight-title">Tu mejor mañana</div>
+                    <div class="insight-value" id="bestMorning">
+                      9:00 - 11:00
+                    </div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-icon">☀️</div>
+                    <div class="insight-title">Tu mejor tarde</div>
+                    <div class="insight-value" id="bestAfternoon">
+                      14:00 - 16:00
+                    </div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-icon">🧠</div>
+                    <div class="insight-title">Tareas complejas</div>
+                    <div class="insight-value" id="complexTasksTime">
+                      Mañana
+                    </div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-icon">📝</div>
+                    <div class="insight-title">Tareas ligeras</div>
+                    <div class="insight-value" id="lightTasksTime">Tarde</div>
+                  </div>
+                </div>
+              </div>
+              <div class="energy-recommendations">
+                <h3>🎯 Recomendaciones para Hoy</h3>
+                <div
+                  id="energyRecommendations"
+                  class="recommendations-list"
+                ></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ============================================ -->
         <!-- VISTA ESTADÍSTICAS -->
         <!-- ============================================ -->
-        <div id="stats-view" class="view-section" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><span>📊</span> Estadísticas y Análisis</div>
-                    <div class="stats-period-selector">
-                        <button class="filter-btn active" onclick="setStatsPeriod('week', this)">Semana</button>
-                        <button class="filter-btn" onclick="setStatsPeriod('month', this)">Mes</button>
-                        <button class="filter-btn" onclick="setStatsPeriod('year', this)">Año</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Stats Overview -->
-                    <div class="stats-overview">
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-icon">📋</div>
-                                <div class="stat-number" id="totalTasksStat">0</div>
-                                <div class="stat-label">Total Tareas</div>
-                                <div class="stat-trend positive" id="totalTasksTrend">+0 esta semana</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">✅</div>
-                                <div class="stat-number" id="completedTasksStat">0</div>
-                                <div class="stat-label">Completadas</div>
-                                <div class="stat-trend positive" id="completedTrend">+0 esta semana</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">📈</div>
-                                <div class="stat-number" id="productivityRate">0%</div>
-                                <div class="stat-label">Productividad</div>
-                                <div class="stat-trend" id="productivityTrend">0% vs semana anterior</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">🔥</div>
-                                <div class="stat-number" id="currentStreakStat">0</div>
-                                <div class="stat-label">Días de Racha</div>
-                                <div class="stat-trend" id="streakTrend">Mejor racha: 0</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">⏱️</div>
-                                <div class="stat-number" id="avgTimeStat">0min</div>
-                                <div class="stat-label">Tiempo Promedio</div>
-                                <div class="stat-trend" id="timeTrend">Por tarea</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">🎯</div>
-                                <div class="stat-number" id="habitsCompletedStat">0</div>
-                                <div class="stat-label">Hábitos Cumplidos</div>
-                                <div class="stat-trend positive" id="habitsTrend">+0 esta semana</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">🍅</div>
-                                <div class="stat-number" id="pomodoroStat">0</div>
-                                <div class="stat-label">Pomodoros</div>
-                                <div class="stat-trend" id="pomodoroTrend">0h de enfoque</div>
-                            </div>
-                            <div class="stat-card highlight">
-                                <div class="stat-icon">⭐</div>
-                                <div class="stat-number" id="scoreStat">0</div>
-                                <div class="stat-label">Puntuación</div>
-                                <div class="stat-trend" id="scoreTrend">Nivel: Principiante</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Charts -->
-                    <div class="stats-charts">
-                        <div class="chart-row">
-                            <div class="chart-card">
-                                <div class="chart-header">
-                                    <h4>Tareas por Estado</h4>
-                                    <div class="chart-legend" id="statusChartLegend"></div>
-                                </div>
-                                <canvas id="tasksByStatusChart"></canvas>
-                            </div>
-                            <div class="chart-card">
-                                <div class="chart-header">
-                                    <h4>Productividad Semanal</h4>
-                                    <div class="chart-legend" id="weeklyChartLegend"></div>
-                                </div>
-                                <canvas id="weeklyProductivityChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-row">
-                            <div class="chart-card">
-                                <div class="chart-header">
-                                    <h4>Tendencia de Hábitos</h4>
-                                </div>
-                                <canvas id="habitsTrendChart"></canvas>
-                            </div>
-                            <div class="chart-card">
-                                <div class="chart-header">
-                                    <h4>Distribución por Prioridad</h4>
-                                </div>
-                                <canvas id="priorityChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-row">
-                            <div class="chart-card full-width">
-                                <div class="chart-header">
-                                    <h4>Registro de Actividad Reciente</h4>
-                                </div>
-                                <canvas id="recentTasksChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div id="stats-view" class="view-section" style="display: none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <span>📊</span> Estadísticas y Análisis
+              </div>
+              <div class="stats-period-selector">
+                <button
+                  class="filter-btn active"
+                  onclick="setStatsPeriod('week', this)"
+                >
+                  Semana
+                </button>
+                <button
+                  class="filter-btn"
+                  onclick="setStatsPeriod('month', this)"
+                >
+                  Mes
+                </button>
+                <button
+                  class="filter-btn"
+                  onclick="setStatsPeriod('year', this)"
+                >
+                  Año
+                </button>
+              </div>
             </div>
+            <div class="card-body">
+              <!-- Stats Overview -->
+              <div class="stats-overview">
+                <div class="stats-grid">
+                  <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-number" id="totalTasksStat">0</div>
+                    <div class="stat-label">Total Tareas</div>
+                    <div class="stat-trend positive" id="totalTasksTrend">
+                      +0 esta semana
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-number" id="completedTasksStat">0</div>
+                    <div class="stat-label">Completadas</div>
+                    <div class="stat-trend positive" id="completedTrend">
+                      +0 esta semana
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-number" id="productivityRate">0%</div>
+                    <div class="stat-label">Productividad</div>
+                    <div class="stat-trend" id="productivityTrend">
+                      0% vs semana anterior
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-number" id="currentStreakStat">0</div>
+                    <div class="stat-label">Días de Racha</div>
+                    <div class="stat-trend" id="streakTrend">
+                      Mejor racha: 0
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-number" id="avgTimeStat">0min</div>
+                    <div class="stat-label">Tiempo Promedio</div>
+                    <div class="stat-trend" id="timeTrend">Por tarea</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-number" id="habitsCompletedStat">0</div>
+                    <div class="stat-label">Hábitos Cumplidos</div>
+                    <div class="stat-trend positive" id="habitsTrend">
+                      +0 esta semana
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-icon">🍅</div>
+                    <div class="stat-number" id="pomodoroStat">0</div>
+                    <div class="stat-label">Pomodoros</div>
+                    <div class="stat-trend" id="pomodoroTrend">
+                      0h de enfoque
+                    </div>
+                  </div>
+                  <div class="stat-card highlight">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-number" id="scoreStat">0</div>
+                    <div class="stat-label">Puntuación</div>
+                    <div class="stat-trend" id="scoreTrend">
+                      Nivel: Principiante
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Charts -->
+              <div class="stats-charts">
+                <div class="chart-row">
+                  <div class="chart-card">
+                    <div class="chart-header">
+                      <h4>Tareas por Estado</h4>
+                      <div class="chart-legend" id="statusChartLegend"></div>
+                    </div>
+                    <canvas id="tasksByStatusChart"></canvas>
+                  </div>
+                  <div class="chart-card">
+                    <div class="chart-header">
+                      <h4>Productividad Semanal</h4>
+                      <div class="chart-legend" id="weeklyChartLegend"></div>
+                    </div>
+                    <canvas id="weeklyProductivityChart"></canvas>
+                  </div>
+                </div>
+                <div class="chart-row">
+                  <div class="chart-card">
+                    <div class="chart-header">
+                      <h4>Tendencia de Hábitos</h4>
+                    </div>
+                    <canvas id="habitsTrendChart"></canvas>
+                  </div>
+                  <div class="chart-card">
+                    <div class="chart-header">
+                      <h4>Distribución por Prioridad</h4>
+                    </div>
+                    <canvas id="priorityChart"></canvas>
+                  </div>
+                </div>
+                <div class="chart-row">
+                  <div class="chart-card full-width">
+                    <div class="chart-header">
+                      <h4>Registro de Actividad Reciente</h4>
+                    </div>
+                    <canvas id="recentTasksChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        </div>
+      </div>
     </main>
 
     <!-- Floating Action Buttons -->
-    <button class="fab voice-fab" id="voiceCommandBtn" onclick="toggleVoiceCommand()" title="Comandos de voz">
-        <span class="material-icons" id="voiceCommandIcon">mic</span>
+    <button
+      class="fab voice-fab"
+      id="voiceCommandBtn"
+      onclick="toggleVoiceCommand()"
+      title="Comandos de voz"
+    >
+      <span class="material-icons" id="voiceCommandIcon">mic</span>
     </button>
     <button class="fab" onclick="openModal('task')">+</button>
 
     <!-- Modal -->
     <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="zen-modal" id="modalContent" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title" id="modalTitle">Nueva Tarea</div>
-                <button class="modal-close" onclick="closeModal()">×</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
+      <div
+        class="zen-modal"
+        id="modalContent"
+        onclick="event.stopPropagation()"
+      >
+        <div class="modal-header">
+          <div class="modal-title" id="modalTitle">Nueva Tarea</div>
+          <button class="modal-close" onclick="closeModal()">×</button>
         </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
     </div>
 
     <!-- Alarm Overlay -->
     <div class="alarm-overlay" id="alarmOverlay">
-        <div class="alarm-content">
-            <h2>⏰ ¡Tiempo Completado!</h2>
-            <p id="alarmMessage">La tarea ha terminado</p>
-            <button class="alarm-btn" onclick="stopAlarm()">Detener Alarma</button>
-        </div>
+      <div class="alarm-content">
+        <h2>⏰ ¡Tiempo Completado!</h2>
+        <p id="alarmMessage">La tarea ha terminado</p>
+        <button class="alarm-btn" onclick="stopAlarm()">Detener Alarma</button>
+      </div>
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal-overlay" id="settingsOverlay" onclick="closeSettingsModal(event)">
-        <div class="zen-modal settings-modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title">⚙ Configuración</div>
-                <button class="modal-close" onclick="closeSettingsModal()">×</button>
-            </div>
-            <div class="modal-body" style="padding: 0;">
-                <div class="settings-container">
-                    <div class="settings-sidebar">
-                        <div class="settings-tab active" onclick="switchSettingsTab('general', this)">
-                            <span>⚡</span> General
-                        </div>
-                        <div class="settings-tab" onclick="switchSettingsTab('timeblocking', this)">
-                            <span>📅</span> Time Blocking
-                        </div>
-                        <div class="settings-tab" onclick="switchSettingsTab('audio', this)">
-                            <span>🔊</span> Audio
-                        </div>
-                        <div class="settings-tab" onclick="switchSettingsTab('data', this)">
-                            <span>💾</span> Datos
-                        </div>
-                        <div class="settings-tab" onclick="switchSettingsTab('about', this)">
-                            <span>ℹ</span> Acerca
-                        </div>
-                    </div>
-                    <div class="settings-content">
-                        <div id="settings-general" class="settings-section active">
-                            <h3>Configuración General</h3>
-                            <div class="setting-item">
-                                <div class="setting-label">🔔 Notificaciones</div>
-                                <div class="setting-description">Activar notificaciones de escritorio para
-                                    recordatorios
-                                </div>
-                                <div class="settings-toggle">
-                                    <div class="toggle-switch active" id="toggle-notifications"
-                                        onclick="toggleSetting('notifications')"></div>
-                                    <span id="notifications-status">Activadas</span>
-                                </div>
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-label">🎨 Animaciones</div>
-                                <div class="setting-description">Mostrar animaciones en la interfaz</div>
-                                <div class="settings-toggle">
-                                    <div class="toggle-switch active" id="toggle-animations"
-                                        onclick="toggleSetting('animations')"></div>
-                                    <span id="animations-status">Activadas</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="settings-timeblocking" class="settings-section">
-                            <h3>Configuración de Time Blocking</h3>
-                            <div class="setting-item">
-                                <div class="setting-label">🌅 Hora de inicio</div>
-                                <div class="setting-description">Hora início de tu jornada laboral</div>
-                                <input type="time" id="tbStartTime" class="form-input" value="09:00"
-                                    style="width: 150px;">
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-label">🌙 Hora de fin</div>
-                                <div class="setting-description">Hora fin de tu jornada laboral</div>
-                                <input type="time" id="tbEndTime" class="form-input" value="18:00"
-                                    style="width: 150px;">
-                            </div>
-                            <button class="btn-primary" onclick="saveTimeBlockingSettings()"
-                                style="margin-top: 16px;">Guardar</button>
-                        </div>
-                        <div id="settings-audio" class="settings-section">
-                            <h3>Configuración de Audio</h3>
-                            <div id="settings-audio-content"></div>
-                        </div>
-                        <div id="settings-data" class="settings-section">
-                            <h3>Gestión de Datos</h3>
-                            <div class="setting-item">
-                                <div class="setting-label">📤 Exportar Datos</div>
-                                <div class="setting-description">Descarga todos tus datos para respaldarlos
-                                </div>
-                                <div class="export-import-btns">
-                                    <button class="btn-secondary" onclick="exportData()">📥 Exportar
-                                        JSON</button>
-                                </div>
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-label">📥 Importar Datos</div>
-                                <div class="setting-description">Restaura tus datos desde un archivo JSON</div>
-                                <input type="file" id="import-file" accept=".json" style="display: none;"
-                                    onchange="importData(this)">
-                                <button class="btn-secondary"
-                                    onclick="document.getElementById('import-file').click()">📤 Importar
-                                    JSON</button>
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-label">🗑️ Borrar Todo</div>
-                                <div class="setting-description">Elimina todas las tareas, hábitos y datos
-                                    guardados
-                                </div>
-                                <button class="btn-secondary" onclick="clearAllData()"
-                                    style="background: var(--danger); color: white;">⚠️ Borrar Todos los
-                                    Datos</button>
-                            </div>
-                        </div>
-                        <div id="settings-about" class="settings-section">
-                            <h3>Acerca de Zen Tasks</h3>
-                            <div class="setting-item">
-                                <div class="setting-label">◉ Zen Tasks</div>
-                                <div class="setting-description">Versión 1.0 - Gestión completa de tareas y
-                                    hábitos
-                                    con
-                                    temporizadores, calendario y seguimiento de hábitos.</div>
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-label">✨ Características</div>
-                                <div class="setting-description">
-                                    • Tablero Kanban con temporizadores<br>
-                                    • Calendario con vista de día, semana y mes<br>
-                                    • Seguimiento de hábitos con rachas<br>
-                                    • Alarmas con audio personalizable<br>
-                                    • Notificaciones de escritorio<br>
-                                    • Modo oscuro/claro
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div
+      class="modal-overlay"
+      id="settingsOverlay"
+      onclick="closeSettingsModal(event)"
+    >
+      <div class="zen-modal settings-modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">⚙ Configuración</div>
+          <button class="modal-close" onclick="closeSettingsModal()">×</button>
         </div>
+        <div class="modal-body" style="padding: 0">
+          <div class="settings-container">
+            <div class="settings-sidebar">
+              <div
+                class="settings-tab active"
+                onclick="switchSettingsTab('general', this)"
+              >
+                <span>⚡</span> General
+              </div>
+              <div
+                class="settings-tab"
+                onclick="switchSettingsTab('timeblocking', this)"
+              >
+                <span>📅</span> Time Blocking
+              </div>
+              <div
+                class="settings-tab"
+                onclick="switchSettingsTab('audio', this)"
+              >
+                <span>🔊</span> Audio
+              </div>
+              <div
+                class="settings-tab"
+                onclick="switchSettingsTab('data', this)"
+              >
+                <span>💾</span> Datos
+              </div>
+              <div
+                class="settings-tab"
+                onclick="switchSettingsTab('about', this)"
+              >
+                <span>ℹ</span> Acerca
+              </div>
+            </div>
+            <div class="settings-content">
+              <div id="settings-general" class="settings-section active">
+                <h3>Configuración General</h3>
+                <div class="setting-item">
+                  <div class="setting-label">🔔 Notificaciones</div>
+                  <div class="setting-description">
+                    Activar notificaciones de escritorio para recordatorios
+                  </div>
+                  <div class="settings-toggle">
+                    <div
+                      class="toggle-switch active"
+                      id="toggle-notifications"
+                      onclick="toggleSetting('notifications')"
+                    ></div>
+                    <span id="notifications-status">Activadas</span>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-label">🎨 Animaciones</div>
+                  <div class="setting-description">
+                    Mostrar animaciones en la interfaz
+                  </div>
+                  <div class="settings-toggle">
+                    <div
+                      class="toggle-switch active"
+                      id="toggle-animations"
+                      onclick="toggleSetting('animations')"
+                    ></div>
+                    <span id="animations-status">Activadas</span>
+                  </div>
+                </div>
+              </div>
+              <div id="settings-timeblocking" class="settings-section">
+                <h3>Configuración de Time Blocking</h3>
+                <div class="setting-item">
+                  <div class="setting-label">🌅 Hora de inicio</div>
+                  <div class="setting-description">
+                    Hora início de tu jornada laboral
+                  </div>
+                  <input
+                    type="time"
+                    id="tbStartTime"
+                    class="form-input"
+                    value="09:00"
+                    style="width: 150px"
+                  />
+                </div>
+                <div class="setting-item">
+                  <div class="setting-label">🌙 Hora de fin</div>
+                  <div class="setting-description">
+                    Hora fin de tu jornada laboral
+                  </div>
+                  <input
+                    type="time"
+                    id="tbEndTime"
+                    class="form-input"
+                    value="18:00"
+                    style="width: 150px"
+                  />
+                </div>
+                <button
+                  class="btn-primary"
+                  onclick="saveTimeBlockingSettings()"
+                  style="margin-top: 16px"
+                >
+                  Guardar
+                </button>
+              </div>
+              <div id="settings-audio" class="settings-section">
+                <h3>Configuración de Audio</h3>
+                <div id="settings-audio-content"></div>
+              </div>
+              <div id="settings-data" class="settings-section">
+                <h3>Gestión de Datos</h3>
+                <div class="setting-item">
+                  <div class="setting-label">📤 Exportar Datos</div>
+                  <div class="setting-description">
+                    Descarga todos tus datos para respaldarlos
+                  </div>
+                  <div class="export-import-btns">
+                    <button class="btn-secondary" onclick="exportData()">
+                      📥 Exportar JSON
+                    </button>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-label">📥 Importar Datos</div>
+                  <div class="setting-description">
+                    Restaura tus datos desde un archivo JSON
+                  </div>
+                  <input
+                    type="file"
+                    id="import-file"
+                    accept=".json"
+                    style="display: none"
+                    onchange="importData(this)"
+                  />
+                  <button
+                    class="btn-secondary"
+                    onclick="document.getElementById('import-file').click()"
+                  >
+                    📤 Importar JSON
+                  </button>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-label">🗑️ Borrar Todo</div>
+                  <div class="setting-description">
+                    Elimina todas las tareas, hábitos y datos guardados
+                  </div>
+                  <button
+                    class="btn-secondary"
+                    onclick="clearAllData()"
+                    style="background: var(--danger); color: white"
+                  >
+                    ⚠️ Borrar Todos los Datos
+                  </button>
+                </div>
+              </div>
+              <div id="settings-about" class="settings-section">
+                <h3>Acerca de Zen Tasks</h3>
+                <div class="setting-item">
+                  <div class="setting-label">◉ Zen Tasks</div>
+                  <div class="setting-description">
+                    Versión 1.0 - Gestión completa de tareas y hábitos con
+                    temporizadores, calendario y seguimiento de hábitos.
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-label">✨ Características</div>
+                  <div class="setting-description">
+                    • Tablero Kanban con temporizadores<br />
+                    • Calendario con vista de día, semana y mes<br />
+                    • Seguimiento de hábitos con rachas<br />
+                    • Alarmas con audio personalizable<br />
+                    • Notificaciones de escritorio<br />
+                    • Modo oscuro/claro
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Mobile Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+    <div
+      class="sidebar-overlay"
+      id="sidebarOverlay"
+      onclick="closeMobileSidebar()"
+    ></div>
 
     <!-- Notification -->
     <div class="notification" id="notification"></div>
 
-    <script src='js/app.js'></script>
-    <script src='js/kanban-enhancements.js'></script>
-</body>
-
+    <script src="js/app.js"></script>
+    <script src="js/kanban-enhancements.js"></script>
+  </body>
 </html>
