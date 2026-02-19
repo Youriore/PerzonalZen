@@ -3214,8 +3214,8 @@ function setBreakDuration(minutes) {
 let energyLogs = [];
 
 function loadStats() {
-    const totalTasks = tasks.length + kanbanTasks.length;
-    const completedTasks = tasks.filter(t => t.completed).length + kanbanTasks.filter(t => t.status === 'done').length;
+    const totalTasks = tasks.length + kanbanTasks.length + completedTasksHistory.length;
+    const completedTasks = tasks.filter(t => t.completed).length + kanbanTasks.filter(t => t.status === 'done').length + completedTasksHistory.length;
     const pendingTasks = tasks.filter(t => !t.completed).length + kanbanTasks.filter(t => t.status === 'pending').length;
     const inProgressTasks = kanbanTasks.filter(t => t.status === 'progress').length;
     const productivityRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -3226,7 +3226,9 @@ function loadStats() {
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
     const weekTasks = tasks.filter(t => t.createdAt && t.createdAt >= weekAgoStr).length;
-    const weekCompleted = tasks.filter(t => t.completed && t.completedAt && t.completedAt >= weekAgoStr).length;
+    const weekCompletedCurrent = tasks.filter(t => t.completed && t.completedAt && t.completedAt >= weekAgoStr).length;
+    const weekCompletedHistory = completedTasksHistory.filter(t => t.completedAt && t.completedAt >= weekAgoStr).length;
+    const weekCompleted = weekCompletedCurrent + weekCompletedHistory;
 
     // Calculate average time
     const tasksWithTime = kanbanTasks.filter(t => t.time && t.time > 0);
@@ -3425,14 +3427,14 @@ function renderRecentTasksChart() {
         recentTasksChart.destroy();
     }
 
-    // Get recent tasks (last 10)
-    const recentTasks = [...tasks, ...kanbanTasks]
-        .sort((a, b) => b.id - a.id)
+    // Get recent tasks (last 10) including history
+    const recentTasks = [...tasks, ...kanbanTasks, ...completedTasksHistory]
+        .sort((a, b) => (b.completedAt || b.id) - (a.completedAt || a.id))
         .slice(0, 10)
         .reverse();
 
-    const labels = recentTasks.map(t => t.title.substring(0, 15) + (t.title.length > 15 ? '...' : ''));
-    const data = recentTasks.map(t => t.completed || t.status === 'done' ? 1 : 0);
+    const labels = recentTasks.map(t => t.title ? (t.title.substring(0, 15) + (t.title.length > 15 ? '...' : '')) : 'Tarea');
+    const data = recentTasks.map(t => t.completed || t.status === 'done' || t.archived ? 1 : 0);
 
     recentTasksChart = new Chart(ctx, {
         type: 'bar',
@@ -3539,9 +3541,10 @@ function renderPriorityChart() {
         priorityChart.destroy();
     }
 
-    const alta = [...tasks, ...kanbanTasks].filter(t => t.priority === 'alta').length;
-    const media = [...tasks, ...kanbanTasks].filter(t => t.priority === 'media').length;
-    const baja = [...tasks, ...kanbanTasks].filter(t => t.priority === 'baja').length;
+    const allTasksWithPriority = [...tasks, ...kanbanTasks, ...completedTasksHistory];
+    const alta = allTasksWithPriority.filter(t => t.priority === 'alta').length;
+    const media = allTasksWithPriority.filter(t => t.priority === 'media').length;
+    const baja = allTasksWithPriority.filter(t => t.priority === 'baja').length;
 
     priorityChart = new Chart(ctx, {
         type: 'polarArea',
