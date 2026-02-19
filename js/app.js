@@ -532,7 +532,9 @@ function saveScreenTime() {
 // Toggle screen time pause
 function toggleScreenTimePause() {
     const tracker = document.getElementById('screenTimeTracker');
+    const trackerMobile = document.getElementById('screenTimeTrackerMobile');
     const btn = document.getElementById('screenTimePauseBtn');
+    const btnMobile = document.querySelector('#screenTimeTrackerMobile .st-btn');
 
     if (screenTimePaused) {
         // Reanudar
@@ -540,13 +542,17 @@ function toggleScreenTimePause() {
         screenTimePaused = false;
         screenTimeStart = Date.now();
         if (btn) btn.innerHTML = '<span class="material-icons">pause</span>';
+        if (btnMobile) btnMobile.innerHTML = '<span class="material-icons">pause</span>';
         if (tracker) tracker.classList.remove('paused');
+        if (trackerMobile) trackerMobile.classList.remove('paused');
     } else {
         // Pausar
         screenTimeTotal += Date.now() - screenTimeStart;
         screenTimePaused = true;
         if (btn) btn.innerHTML = '<span class="material-icons">play_arrow</span>';
+        if (btnMobile) btnMobile.innerHTML = '<span class="material-icons">play_arrow</span>';
         if (tracker) tracker.classList.add('paused');
+        if (trackerMobile) trackerMobile.classList.add('paused');
     }
     saveScreenTime();
 }
@@ -596,25 +602,34 @@ function updateScreenTime() {
     const seconds = Math.floor((elapsed % 60000) / 1000);
 
     const display = document.getElementById('screenTimeDisplay');
+    const displayMobile = document.getElementById('screenTimeDisplayMobile');
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
     if (display) {
-        display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        display.textContent = timeString;
+    }
+    if (displayMobile) {
+        displayMobile.textContent = timeString;
+    }
 
         // Update warning state
         const tracker = document.getElementById('screenTimeTracker');
-        if (tracker) {
-            tracker.classList.remove('warning', 'danger');
-
-            if (elapsed >= SCREEN_TIME_DANGER) {
-                tracker.classList.add('danger');
-                if (!screenTimeWarningShown && !screenTimePaused) {
-                    sendNotification('⚠️ ¡Llevas mucho tiempo en pantalla!', 'Considera tomar un descanso');
-                    screenTimeWarningShown = true;
+        const trackerMobile = document.getElementById('screenTimeTrackerMobile');
+        
+        [tracker, trackerMobile].forEach(t => {
+            if (t) {
+                t.classList.remove('warning', 'danger');
+                if (elapsed >= SCREEN_TIME_DANGER) {
+                    t.classList.add('danger');
+                    if (!screenTimeWarningShown && !screenTimePaused) {
+                        sendNotification('⚠️ ¡Llevas mucho tiempo en pantalla!', 'Considera tomar un descanso');
+                        screenTimeWarningShown = true;
+                    }
+                } else if (elapsed >= SCREEN_TIME_WARNING) {
+                    t.classList.add('warning');
                 }
-            } else if (elapsed >= SCREEN_TIME_WARNING) {
-                tracker.classList.add('warning');
             }
-        }
-    }
+        });
 }
 
 // Update header time
@@ -2727,9 +2742,10 @@ function renderTimeBlocking() {
                 }
 
                 blocksHtml += `
-                    <div class="${blockClass}" style="top: ${top}px; height: ${Math.max(height, 30)}px;" title="${title}">
+                    <div class="${blockClass}" style="top: ${top}px; height: ${Math.max(height, 30)}px;" title="${title}" data-block-id="${block.id || ''}">
                         <div class="tb-block-title">${title}</div>
                         <div class="tb-block-time">${block.startTime} - ${block.endTime}</div>
+                        <button class="tb-block-delete" onclick="deleteTimeBlock(this, ${dayIndex}, '${block.id || ''}')" title="Eliminar">×</button>
                     </div>
                 `;
             }
@@ -2767,6 +2783,24 @@ function renderTimeBlocking() {
         }
 
         document.getElementById('tbWeekLabel').textContent = weekLabel;
+    }
+}
+
+function deleteTimeBlock(btn, dayIndex, blockId) {
+    if (!blockId) {
+        const blockEl = btn.closest('.tb-block');
+        if (blockEl) blockEl.remove();
+        return;
+    }
+
+    if (!confirm('¿Eliminar este bloque de tiempo?')) return;
+
+    const blockEl = btn.closest('.tb-block');
+    if (blockEl) blockEl.remove();
+
+    if (typeof timeBlockingData !== 'undefined' && timeBlockingData[dayIndex]) {
+        timeBlockingData[dayIndex] = timeBlockingData[dayIndex].filter(b => b.id !== blockId);
+        saveTimeBlockingData();
     }
 }
 
