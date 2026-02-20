@@ -24,6 +24,10 @@ let customAudioData = null;
 let audioVolume = 0.8;
 let pendingDelete = null; // Store item to delete
 
+// Notifications
+let notifications = [];
+let notificationTimers = [];
+
 // Screen time tracking
 let screenTimeStart = Date.now();
 let screenTimePaused = false;
@@ -604,7 +608,7 @@ function updateScreenTime() {
     const display = document.getElementById('screenTimeDisplay');
     const displayMobile = document.getElementById('screenTimeDisplayMobile');
     const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
+
     if (display) {
         display.textContent = timeString;
     }
@@ -612,24 +616,24 @@ function updateScreenTime() {
         displayMobile.textContent = timeString;
     }
 
-        // Update warning state
-        const tracker = document.getElementById('screenTimeTracker');
-        const trackerMobile = document.getElementById('screenTimeTrackerMobile');
-        
-        [tracker, trackerMobile].forEach(t => {
-            if (t) {
-                t.classList.remove('warning', 'danger');
-                if (elapsed >= SCREEN_TIME_DANGER) {
-                    t.classList.add('danger');
-                    if (!screenTimeWarningShown && !screenTimePaused) {
-                        sendNotification('⚠️ ¡Llevas mucho tiempo en pantalla!', 'Considera tomar un descanso');
-                        screenTimeWarningShown = true;
-                    }
-                } else if (elapsed >= SCREEN_TIME_WARNING) {
-                    t.classList.add('warning');
+    // Update warning state
+    const tracker = document.getElementById('screenTimeTracker');
+    const trackerMobile = document.getElementById('screenTimeTrackerMobile');
+
+    [tracker, trackerMobile].forEach(t => {
+        if (t) {
+            t.classList.remove('warning', 'danger');
+            if (elapsed >= SCREEN_TIME_DANGER) {
+                t.classList.add('danger');
+                if (!screenTimeWarningShown && !screenTimePaused) {
+                    sendNotification('⚠️ ¡Llevas mucho tiempo en pantalla!', 'Considera tomar un descanso');
+                    screenTimeWarningShown = true;
                 }
+            } else if (elapsed >= SCREEN_TIME_WARNING) {
+                t.classList.add('warning');
             }
-        });
+        }
+    });
 }
 
 // Update header time
@@ -2375,7 +2379,7 @@ function generateTimeBlocking() {
         const dateStr = day.toISOString().split('T')[0];
         const dayNum = day.getDay();
         const dayHabits = habits.filter(h => h.days && h.days[dayNum] === true);
-        
+
         // Include both specific date events AND recurring schedules
         const dayEvents = scheduleItems.filter(item => {
             if (item.date) return item.date === dateStr;
@@ -2446,14 +2450,14 @@ function generateTimeBlocking() {
             const endHour = parseInt(event.endTime.split(':')[0]);
             const travelBefore = event.travelBefore || 0;
             const travelAfter = event.travelAfter || 0;
-            
+
             // Calculate actual start/end with travel time
             const actualStartHour = startHour - (travelBefore / 60);
             const actualEndHour = endHour + (travelAfter / 60);
 
             // Add to occupied slots (include travel time)
-            occupiedSlots.push({ 
-                start: Math.max(actualStartHour, dayStart), 
+            occupiedSlots.push({
+                start: Math.max(actualStartHour, dayStart),
                 end: Math.min(actualEndHour, dayEnd),
                 title: event.title || event.subject || 'Evento'
             });
@@ -2464,13 +2468,13 @@ function generateTimeBlocking() {
                 const m = Math.round((hours - h) * 60);
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
             };
-            
+
             timeBlocks.push({
                 id: `cal-${event.id}`,
                 title: event.title || event.subject || 'Evento',
                 startTime: formatTime(actualStartHour),
                 endTime: formatTime(actualEndHour),
-                duration: (endHour - startHour + travelBefore/60 + travelAfter/60) * 60,
+                duration: (endHour - startHour + travelBefore / 60 + travelAfter / 60) * 60,
                 type: 'calendar',
                 date: dateStr,
                 dayIndex: htmlDayIndex,
@@ -2914,11 +2918,54 @@ let pomodoroCompletedToday = 0;
 let pomodoroTotalSecondsToday = 0;
 let pomodoroCurrentStreak = 0;
 let pomodoroSelectedTaskId = null;
+let pomodoroDailyGoal = parseInt(localStorage.getItem('pomodoroDailyGoal')) || 4;
+let goalNotified = false;
 
 function initPomodoro() {
     loadPomodoroStats();
     updatePomodoroDisplay();
     populatePomodoroTaskSelect();
+    updatePomodoroGoalProgress();
+    loadPomodoroTimerState();
+
+    // Reset goal notification for new day
+    goalNotified = pomodoroCompletedToday >= pomodoroDailyGoal;
+
+    // Set active goal button
+    document.querySelectorAll('.duration-btn[data-goal]').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.goal) === pomodoroDailyGoal);
+    });
+}
+
+function loadPomodoroTimerState() {
+    const saved = JSON.parse(localStorage.getItem('pomodoroTimerState'));
+    if (saved && saved.date) {
+        const savedDate = new Date(saved.date);
+        const now = new Date();
+        const diffSeconds = Math.floor((now - savedDate) / 1000);
+
+        if (saved.isRunning && diffSeconds > 0) {
+            // Timer was running - calculate remaining time
+            pomodoroTimeLeft = Math.max(0, saved.timeLeft - diffSeconds);
+
+            if (pomodoroTimeLeft > 0 && !pomodoroIsRunning) {
+                // Only start if not already running
+                startPomodoro();
+            }
+        } else if (!saved.isRunning) {
+            // Timer was paused - just restore the time
+            pomodoroTimeLeft = saved.timeLeft;
+        }
+        updatePomodoroDisplay();
+    }
+}
+
+function savePomodoroTimerState() {
+    localStorage.setItem('pomodoroTimerState', JSON.stringify({
+        timeLeft: pomodoroTimeLeft,
+        isRunning: pomodoroIsRunning,
+        date: new Date().toISOString()
+    }));
 }
 
 function loadPomodoroStats() {
@@ -2962,15 +3009,38 @@ function populatePomodoroTaskSelect() {
 
     const relevantTasks = [...tasks.filter(t => !t.completed), ...kanbanTasks.filter(t => t.status !== 'done')];
 
-    select.innerHTML = '<option value="">Elige una tarea...</option>';
-    relevantTasks.forEach(task => {
-        select.innerHTML += `<option value="${task.id}">${escapeHtml(task.title)}</option>`;
-    });
+    select.innerHTML = '<option value="">Sin tarea - Enfoque libre</option>';
+
+    if (kanbanTasks.length > 0) {
+        select.innerHTML += '<optgroup label="Kanban">';
+        kanbanTasks.forEach(task => {
+            const statusLabel = task.status === 'pending' ? '📋' : task.status === 'progress' ? '▶️' : '✅';
+            select.innerHTML += `<option value="kanban_${task.id}">${statusLabel} ${escapeHtml(task.title)}</option>`;
+        });
+        select.innerHTML += '</optgroup>';
+    }
+
+    if (tasks.filter(t => !t.completed).length > 0) {
+        select.innerHTML += '<optgroup label="Mis Tareas">';
+        tasks.filter(t => !t.completed).forEach(task => {
+            select.innerHTML += `<option value="task_${task.id}">📝 ${escapeHtml(task.title)}</option>`;
+        });
+        select.innerHTML += '</optgroup>';
+    }
 
     select.onchange = function () {
         pomodoroSelectedTaskId = this.value;
-        const task = relevantTasks.find(t => t.id === parseInt(this.value));
-        document.getElementById('pomodoroTaskTitle').textContent = task ? task.title : 'Selecciona una tarea';
+        const task = relevantTasks.find(t => t.id === parseInt(this.value.replace('kanban_', '').replace('task_', '')));
+        const focusInput = document.getElementById('pomodoroFocusInput');
+
+        if (task) {
+            document.getElementById('pomodoroTaskTitle').textContent = task.title;
+            if (focusInput && !focusInput.value) {
+                focusInput.value = task.title;
+            }
+        } else {
+            document.getElementById('pomodoroTaskTitle').textContent = 'Enfoque Libre';
+        }
     };
 }
 
@@ -3088,6 +3158,8 @@ function completeFocusTask() {
 let focusTaskId = null;
 
 function startPomodoro() {
+    if (pomodoroIsRunning) return; // Prevent multiple intervals
+
     pomodoroIsRunning = true;
     document.getElementById('pomodoroStartBtn').style.display = 'none';
     document.getElementById('pomodoroPauseBtn').style.display = 'flex';
@@ -3098,6 +3170,7 @@ function startPomodoro() {
     pomodoroInterval = setInterval(() => {
         pomodoroTimeLeft--;
         updatePomodoroDisplay();
+        savePomodoroTimerState();
 
         if (pomodoroTimeLeft <= 0) {
             completePomodoroSession();
@@ -3111,6 +3184,7 @@ function pausePomodoro() {
     document.getElementById('pomodoroStartBtn').style.display = 'flex';
     document.getElementById('pomodoroPauseBtn').style.display = 'none';
     releaseWakeLock();
+    savePomodoroTimerState();
 }
 
 function resetPomodoro() {
@@ -3119,48 +3193,56 @@ function resetPomodoro() {
     pomodoroTimeLeft = pomodoroWorkDuration * 60;
     updatePomodoroDisplay();
     document.getElementById('sessionType').textContent = 'Trabajo';
+    localStorage.removeItem('pomodoroTimerState');
 }
 
 function completePomodoroSession() {
     pausePomodoro();
 
-    if (!pomodoroIsBreak) {
-        // Work session completed
-        pomodoroCompletedToday++;
-        pomodoroTotalSecondsToday += pomodoroWorkDuration * 60;
+    // Pomodoro completed
+    pomodoroCompletedToday++;
+    pomodoroTotalSecondsToday += pomodoroWorkDuration * 60;
 
-        // Save stats
-        const today = new Date().toDateString();
-        const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
-        stats[today] = { completed: pomodoroCompletedToday, seconds: pomodoroTotalSecondsToday };
-        localStorage.setItem('pomodoroStats', JSON.stringify(stats));
+    // Clear timer state
+    localStorage.removeItem('pomodoroTimerState');
 
-        // Update current streak
-        pomodoroCurrentStreak = calculatePomodoroStreak();
-        updatePomodoroStats();
+    // Get current session info
+    const today = new Date().toISOString().split('T')[0];
 
-        // Play completion sound
-        playAlarmSound();
+    // Save detailed pomodoro record for charts
+    const pomodoroHistory = JSON.parse(localStorage.getItem('pomodoroHistory')) || [];
+    pomodoroHistory.push({
+        date: today,
+        completedAt: new Date().toISOString(),
+        duration: pomodoroWorkDuration,
+        type: 'work'
+    });
+    localStorage.setItem('pomodoroHistory', JSON.stringify(pomodoroHistory));
 
-        // Switch to break
-        pomodoroIsBreak = true;
-        pomodoroTimeLeft = pomodoroBreakDuration * 60;
-        document.getElementById('sessionType').textContent = 'Descanso';
-        showNotification('🍅 ¡Pomodoro completado! Time for a break.');
+    // Save stats
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    stats[today] = { completed: pomodoroCompletedToday, seconds: pomodoroTotalSecondsToday };
+    localStorage.setItem('pomodoroStats', JSON.stringify(stats));
 
-        // Auto-start break (optional)
-        if (confirm('¿Iniciar descanso automáticamente?')) {
-            startPomodoro();
-        }
-    } else {
-        // Break completed
-        pomodoroIsBreak = false;
-        pomodoroTimeLeft = pomodoroWorkDuration * 60;
-        document.getElementById('sessionType').textContent = 'Trabajo';
-        showNotification('⏰ Descanso terminado. ¡Listo para otro pomodoro?');
+    // Update current streak
+    pomodoroCurrentStreak = calculatePomodoroStreak();
+    updatePomodoroStats();
+    updatePomodoroGoalProgress();
+
+    // Check if daily goal reached
+    if (pomodoroCompletedToday >= pomodoroDailyGoal && !goalNotified) {
+        goalNotified = true;
+        showNotification('🎯 ¡Meta diaria alcanzada! ' + pomodoroCompletedToday + ' pomodoros completados');
     }
 
+    // Play completion sound
+    playAlarmSound();
+
+    // Reset timer
+    pomodoroTimeLeft = pomodoroWorkDuration * 60;
     updatePomodoroDisplay();
+
+    showNotification('🍅 ¡Pomodoro completado! 🎉');
 }
 
 function updatePomodoroDisplay() {
@@ -3173,14 +3255,170 @@ function updatePomodoroDisplay() {
 }
 
 function updatePomodoroStats() {
-    document.getElementById('todayPomodoros').textContent = pomodoroCompletedToday;
+    const todayPomodorosEl = document.getElementById('todayPomodoros');
+    const todayFocusTimeEl = document.getElementById('todayFocusTime');
+
+    if (todayPomodorosEl) todayPomodorosEl.textContent = pomodoroCompletedToday;
 
     const hours = Math.floor(pomodoroTotalSecondsToday / 3600);
     const minutes = Math.floor((pomodoroTotalSecondsToday % 3600) / 60);
-    document.getElementById('todayFocusTime').textContent = `${hours}h ${minutes}m`;
+    if (todayFocusTimeEl) todayFocusTimeEl.textContent = `${hours}h ${minutes}m`;
 
-    document.getElementById('currentStreak').textContent = pomodoroCurrentStreak;
+    // Week stats
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    let weekPomodoros = 0;
+    let weekSeconds = 0;
+    let monthPomodoros = 0;
+    let monthSeconds = 0;
+
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    for (const [dateStr, data] of Object.entries(stats)) {
+        const date = new Date(dateStr);
+        if (date >= startOfWeek) {
+            weekPomodoros += data.completed || 0;
+            weekSeconds += data.seconds || 0;
+        }
+        if (date >= startOfMonth) {
+            monthPomodoros += data.completed || 0;
+            monthSeconds += data.seconds || 0;
+        }
+    }
+
+    const weekHours = Math.floor(weekSeconds / 3600);
+    const weekMins = Math.floor((weekSeconds % 3600) / 60);
+
+    const weekPomodorosEl = document.getElementById('weekPomodoros');
+    const weekFocusTimeEl = document.getElementById('weekFocusTime');
+    const monthPomodorosEl = document.getElementById('monthPomodoros');
+    const currentStreakEl = document.getElementById('currentStreak');
+
+    if (weekPomodorosEl) weekPomodorosEl.textContent = weekPomodoros;
+    if (weekFocusTimeEl) weekFocusTimeEl.textContent = `${weekHours}h ${weekMins}m`;
+    if (monthPomodorosEl) monthPomodorosEl.textContent = monthPomodoros;
+    if (currentStreakEl) currentStreakEl.textContent = pomodoroCurrentStreak;
+
+    renderPomodoroBarChart();
+    updatePomodoroGoalProgress();
 }
+
+function updatePomodoroGoalProgress() {
+    const progressFill = document.getElementById('pomodoroProgressFill');
+    const goalTarget = document.getElementById('pomodoroGoalTarget');
+    const goalProgress = document.getElementById('pomodoroGoalProgress');
+
+    if (!progressFill || !goalTarget || !goalProgress) return;
+
+    goalTarget.textContent = pomodoroDailyGoal;
+    goalProgress.innerHTML = pomodoroCompletedToday + ' / <span id="pomodoroGoalTarget">' + pomodoroDailyGoal + '</span>';
+
+    const percentage = Math.min((pomodoroCompletedToday / pomodoroDailyGoal) * 100, 100);
+    progressFill.style.width = percentage + '%';
+
+    if (pomodoroCompletedToday >= pomodoroDailyGoal) {
+        progressFill.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
+        document.querySelector('.pomodoro-goal')?.classList.add('goal-complete');
+    } else {
+        progressFill.style.background = 'linear-gradient(90deg, #6366f1, #8b5cf6)';
+        document.querySelector('.pomodoro-goal')?.classList.remove('goal-complete');
+    }
+}
+
+function setPomodoroGoal(goal) {
+    pomodoroDailyGoal = goal;
+    localStorage.setItem('pomodoroDailyGoal', goal);
+
+    document.querySelectorAll('.duration-btn[data-goal]').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.goal) === goal);
+    });
+
+    updatePomodoroGoalProgress();
+}
+
+function showPomodoroGoalSettings() {
+    const current = pomodoroDailyGoal;
+    showNotification('⚙️ Configura tu meta diaria: ' + current + ' pomodoros');
+}
+
+let pomodoroBarChart = null;
+
+function renderPomodoroBarChart() {
+    const canvas = document.getElementById('pomodoroBarChart');
+    if (!canvas) return;
+
+    if (Chart.getChart) {
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    const labels = [];
+    const data = [];
+
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+        labels.push(dayName);
+
+        const seconds = stats[dateStr]?.seconds || 0;
+        const completed = stats[dateStr]?.completed || 0;
+        data.push(completed);
+    }
+
+    if (Chart.getChart) {
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+    }
+
+    pomodoroBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Pomodoros Completados',
+                data: data,
+                backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                borderColor: 'rgb(99, 102, 241)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Pomodoros'
+                    }
+                }
+            }
+        }
+    });
+}
+
 
 function setPomodoroDuration(minutes) {
     pomodoroWorkDuration = minutes;
@@ -4059,9 +4297,6 @@ function renderTasks() {
             `).join('');
 }
 
-let notifications = [];
-let notificationTimers = [];
-
 function initNotifications() {
     // Request permission
     if ('Notification' in window && Notification.permission === 'default') {
@@ -4299,11 +4534,40 @@ function formatDateDisplay(dateStr) {
     return date.toLocaleDateString('es', { day: 'numeric', month: 'short' });
 }
 
-function showNotification(message) {
+function showNotification(message, type = 'info') {
     const notif = document.getElementById('notification');
-    notif.textContent = message;
+    if (!notif) return;
+
+    let icon = '';
+    let notifType = type;
+
+    // Auto-detect type based on message content
+    if (message.includes('¡Meta') || message.includes('completado') || message.includes('creada') || message.includes('actualizada') || message.includes(' guardada')) {
+        icon = '✅';
+        notifType = 'success';
+    } else if (message.includes('error') || message.includes('Error') || message.includes('eliminar') || message.includes('fallo')) {
+        icon = '❌';
+        notifType = 'error';
+    } else if (message.includes('⚠️') || message.includes('advertencia') || message.includes('sin asignar')) {
+        icon = '⚠️';
+        notifType = 'warning';
+    } else if (message.includes('🍅') || message.includes('⏰') || message.includes('⏱') || message.includes('tiempo')) {
+        icon = '⏰';
+    } else if (message.includes('⚡') || message.includes('energía')) {
+        icon = '⚡';
+    } else if (message.includes('🎯')) {
+        icon = '🎯';
+    } else if (message.includes('📅') || message.includes('calendario') || message.includes('evento')) {
+        icon = '📅';
+    } else {
+        icon = 'ℹ️';
+    }
+
+    notif.className = 'notification ' + notifType;
+    notif.innerHTML = '<span class="notification-icon">' + icon + '</span><span>' + message + '</span>';
     notif.classList.add('show');
-    setTimeout(() => notif.classList.remove('show'), 3000);
+
+    setTimeout(() => notif.classList.remove('show'), 3500);
 }
 
 /* Settings Modal Logic */

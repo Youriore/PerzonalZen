@@ -77,12 +77,6 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#" onclick="switchView('focus')">
-              <span class="material-icons">center_focus_strong</span>
-              <span class="nav-text">Modo Enfoque</span>
-            </a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link" href="#" onclick="switchView('energy')">
               <span class="material-icons">bolt</span>
               <span class="nav-text">Energía</span>
@@ -174,10 +168,6 @@
       <a href="#" class="bottom-nav-item" onclick="switchView('habits')">
         <span class="material-icons">check_circle</span>
         <span class="label">Hábitos</span>
-      </a>
-      <a href="#" class="bottom-nav-item" onclick="switchView('focus')">
-        <span class="material-icons">center_focus_strong</span>
-        <span class="label">Enfoque</span>
       </a>
       <a href="#" class="bottom-nav-item" onclick="openSettingsModal()">
         <span class="material-icons">settings</span>
@@ -557,15 +547,6 @@
           <div class="pomodoro-main">
             <div class="pomodoro-timer">
               <div class="timer-display" id="pomodoroTimer">25:00</div>
-              <div class="timer-session-type" id="sessionType">Trabajo</div>
-            </div>
-            <div class="pomodoro-task-info">
-              <h3 id="pomodoroTaskTitle">Selecciona una tarea</h3>
-              <div class="task-selector">
-                <select id="pomodoroTaskSelect" class="form-select">
-                  <option value="">Elige una tarea...</option>
-                </select>
-              </div>
             </div>
             <div class="pomodoro-controls">
               <button class="pomodoro-btn primary" id="pomodoroStartBtn" onclick="togglePomodoro()">
@@ -581,112 +562,66 @@
             </div>
           </div>
           <div class="pomodoro-stats">
+            <h4>Estadísticas</h4>
             <div class="stats-grid">
               <div class="stat-card">
                 <div class="stat-number" id="todayPomodoros">0</div>
-                <div class="stat-label">Pomodoros Hoy</div>
+                <div class="stat-label">Hoy</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="weekPomodoros">0</div>
+                <div class="stat-label">Semana</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="monthPomodoros">0</div>
+                <div class="stat-label">Mes</div>
               </div>
               <div class="stat-card">
                 <div class="stat-number" id="todayFocusTime">0h 0m</div>
-                <div class="stat-label">Tiempo Foco</div>
+                <div class="stat-label">Tiempo Hoy</div>
               </div>
-              <div class="stat-card">
-                <div class="stat-number" id="currentStreak">0</div>
-                <div class="stat-label">Racha Actual</div>
+            </div>
+            <div class="pomodoro-chart-container">
+              <h5>Pomodoros Completados (Últimos 7 días)</h5>
+              <canvas id="pomodoroBarChart"></canvas>
+            </div>
+            <div class="pomodoro-goal">
+              <div class="goal-header">
+                <span>Meta Diaria</span>
+                <span id="pomodoroGoalProgress">0 / <span id="pomodoroGoalTarget">4</span></span>
               </div>
+              <div class="goal-progress-bar">
+                <div class="goal-progress-fill" id="pomodoroProgressFill"></div>
+              </div>
+              <button class="goal-settings-btn" onclick="showPomodoroGoalSettings()">
+                <span>⚙️</span> Configurar Meta
+              </button>
             </div>
           </div>
           <div class="pomodoro-settings">
             <div class="settings-group">
-              <label class="setting-label">Duración Trabajo:</label>
+              <label class="setting-label">Duración:</label>
               <div class="duration-selector">
                 <button class="duration-btn" onclick="setPomodoroDuration(25)" data-duration="25">
-                  25
+                  25 min
                 </button>
                 <button class="duration-btn" onclick="setPomodoroDuration(45)" data-duration="45">
-                  45
+                  45 min
                 </button>
                 <button class="duration-btn" onclick="setPomodoroDuration(60)" data-duration="60">
-                  60
+                  60 min
                 </button>
               </div>
             </div>
             <div class="settings-group">
-              <label class="setting-label">Duración Descanso:</label>
+              <label class="setting-label">Meta Diaria:</label>
               <div class="duration-selector">
-                <button class="duration-btn" onclick="setBreakDuration(5)" data-break="5">
-                  5
-                </button>
-                <button class="duration-btn" onclick="setBreakDuration(10)" data-break="10">
-                  10
-                </button>
-                <button class="duration-btn" onclick="setBreakDuration(15)" data-break="15">
-                  15
-                </button>
+                <button class="duration-btn" onclick="setPomodoroGoal(2)" data-goal="2">2</button>
+                <button class="duration-btn" onclick="setPomodoroGoal(4)" data-goal="4">4</button>
+                <button class="duration-btn" onclick="setPomodoroGoal(6)" data-goal="6">6</button>
+                <button class="duration-btn" onclick="setPomodoroGoal(8)" data-goal="8">8</button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============================================ -->
-      <!-- VISTA MODO ENFOQUE (FOCUS) -->
-      <!-- ============================================ -->
-      <div id="focus-view" class="view-section" style="
-            display: none;
-            height: 100vh;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 2rem;
-          ">
-        <div class="focus-container" style="max-width: 600px; width: 100%">
-          <div style="margin-bottom: 2rem">
-            <span style="font-size: 1.2rem; opacity: 0.7; letter-spacing: 2px">MODO ENFOQUE</span>
-          </div>
-          <h1 id="focusTaskTitle" style="font-size: 3rem; margin-bottom: 2rem; line-height: 1.2">
-            Selecciona una tarea
-          </h1>
-          <div id="focusTimerDisplay" style="
-                font-size: 6rem;
-                font-weight: bold;
-                font-family: monospace;
-                margin-bottom: 2rem;
-                color: var(--primary);
-              ">
-            25:00
-          </div>
-          <div class="focus-controls" style="
-                display: flex;
-                gap: 20px;
-                justify-content: center;
-                margin-bottom: 3rem;
-              ">
-            <button class="btn-primary" onclick="toggleTimer()" style="
-                  padding: 1rem 3rem;
-                  font-size: 1.5rem;
-                  border-radius: 50px;
-                ">
-              <span id="focusPlayIcon">▶</span>
-              <span id="focusBtnText">Iniciar</span>
-            </button>
-            <button class="btn-secondary" onclick="stopTimer()" style="
-                  width: 60px;
-                  height: 60px;
-                  border-radius: 50%;
-                  font-size: 1.5rem;
-                ">
-              ⏹
-            </button>
-          </div>
-          <div class="focus-actions" style="display: flex; gap: 15px; justify-content: center">
-            <button class="btn-primary" onclick="completeFocusTask()" style="background: var(--success)">
-              ✔ Completar Tarea
-            </button>
-            <button class="btn-secondary" onclick="exitFocusMode()">
-              Salir del Modo Zen
-            </button>
           </div>
         </div>
       </div>
