@@ -65,6 +65,12 @@
           <!-- Productivity Views -->
           <li class="nav-section-title"><span>Productividad</span></li>
           <li class="nav-item">
+            <a class="nav-link" href="#" onclick="openProductivityAssistant()">
+              <span class="material-icons">psychology</span>
+              <span class="nav-text">Asistente AI</span>
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" href="#" onclick="switchView('timeblocking')">
               <span class="material-icons">view_week</span>
               <span class="nav-text">Time Blocking</span>
@@ -85,6 +91,12 @@
 
           <!-- Analytics -->
           <li class="nav-section-title"><span>Análisis</span></li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" onclick="openPlanGenerator()">
+              <span class="material-icons">calendar_month</span>
+              <span class="nav-text">Planes Semanales</span>
+            </a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="#" onclick="switchView('stats')">
               <span class="material-icons">bar_chart</span>
@@ -115,10 +127,6 @@
           <span class="material-icons">settings</span>
           <span class="nav-text">Configuración</span>
         </button>
-        <button class="theme-toggle w-100" onclick="toggleTheme()">
-          <span class="material-icons">dark_mode</span>
-          <span id="themeText" class="nav-text">Modo Oscuro</span>
-        </button>
       </div>
     </nav>
 
@@ -144,9 +152,6 @@
       <div class="header-right">
         <button class="header-btn" onclick="openSettingsModal()" title="Configuración">
           <span class="material-icons">settings</span>
-        </button>
-        <button class="header-btn theme-toggle-header" onclick="toggleTheme()" title="Modo Oscuro">
-          <span class="material-icons" id="headerThemeIcon">dark_mode</span>
         </button>
       </div>
     </header>
@@ -196,626 +201,624 @@
               <span class="material-icons" id="pauseIconMobile">pause</span>
             </button>
           </div>
-          <button class="theme-toggle-mobile btn btn-sm btn-outline-secondary" onclick="toggleTheme()">
-            <span class="material-icons" style="font-size: 1.2rem">dark_mode</span>
+        </div>
+      </div>
+      </header>
+    </div>
+    </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VISTA DASHBOARD (Principal) -->
+    <!-- ============================================ -->
+    <div id="dashboard-view" class="dashboard-grid view-section">
+      <!-- Welcome Greeting Section -->
+      <div class="welcome-container mb-4">
+        <div class="welcome-text">
+          <h2 id="greeting-title">Hola, Youri 👋</h2>
+          <p class="text-muted">Aquí tienes un resumen de tu día.</p>
+        </div>
+        <div class="date-display" id="header-date"></div>
+      </div>
+
+      <!-- Kanban Board -->
+      <div class="card kanban-card">
+        <div class="card-header">
+          <div class="card-title"><span>◈</span> Tablero Kanban</div>
+          <div class="kanban-controls">
+            <div class="search-box">
+              <input type="text" placeholder="Buscar tareas..." id="kanbanSearch" oninput="filterKanban(this.value)" />
+            </div>
+            <button class="btn-secondary" onclick="clearKanbanSearch()">
+              Limpiar
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="kanban-container">
+            <!-- Columna: Por Hacer -->
+            <div class="kanban-column kanban-pending" id="colPending" data-status="pending">
+              <div class="kanban-header"><span>⏳</span> Por Hacer</div>
+              <div id="kanbanPending"></div>
+              <button class="add-task-btn" onclick="openModal('kanban')">
+                Agregar tarea
+              </button>
+            </div>
+            <!-- Columna: En Proceso -->
+            <div class="kanban-column kanban-progress" id="colProgress" data-status="progress">
+              <div class="kanban-header"><span>▶</span> En Proceso</div>
+              <div id="kanbanProgress"></div>
+              <button class="add-task-btn" onclick="openModal('kanban', 'progress')">
+                Agregar tarea
+              </button>
+            </div>
+            <!-- Columna: Completadas -->
+            <div class="kanban-column kanban-done" id="colDone" data-status="done">
+              <div class="kanban-header"><span>✔</span> Completadas</div>
+              <div id="kanbanDone"></div>
+              <button class="add-task-btn" onclick="openModal('kanban', 'done')">
+                Agregar tarea
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar (Mini) -->
+      <div class="right-column">
+        <div class="card calendar-card">
+          <div class="card-header">
+            <div class="card-title"><span>◐</span> Calendario</div>
+          </div>
+          <div class="card-body">
+            <div class="calendar-nav">
+              <div class="calendar-views">
+                <button class="view-btn" id="viewDay" onclick="setCalendarView('day')">
+                  Día
+                </button>
+                <button class="view-btn" id="viewWeek" onclick="setCalendarView('week')">
+                  Semana
+                </button>
+                <button class="view-btn active" id="viewMonth" onclick="setCalendarView('month')">
+                  Mes
+                </button>
+              </div>
+              <div class="calendar-nav-arrows">
+                <button class="nav-arrow" onclick="navigateCalendar(-1)">
+                  ◀
+                </button>
+                <span class="current-period" id="currentPeriod"></span>
+                <button class="nav-arrow" onclick="navigateCalendar(1)">
+                  ▶
+                </button>
+              </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Habits & Tasks - 50/50 Split -->
+      <div class="habits-tasks-row">
+        <!-- Hábitos -->
+        <div class="card habits-card">
+          <div class="card-header">
+            <div class="card-title"><span>◉</span> Hábitos</div>
+            <button class="btn-secondary" onclick="openModal('habit')">
+              + Nuevo
+            </button>
+          </div>
+          <div class="card-body" id="habitsList"></div>
+        </div>
+
+        <!-- Lista de Tareas -->
+        <div class="card tasks-card">
+          <div class="card-header">
+            <div class="card-title"><span>◑</span> Mis Tareas</div>
+            <div style="display: flex; gap: 8px">
+              <div class="search-box">
+                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)" />
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filters" style="margin-bottom: 16px">
+              <button class="filter-btn active" onclick="setFilter('all', this)">
+                Todas
+              </button>
+              <button class="filter-btn" onclick="setFilter('pending', this)">
+                Pendientes
+              </button>
+              <button class="filter-btn" onclick="setFilter('completed', this)">
+                Completadas
+              </button>
+              <button class="filter-btn" onclick="setFilter('today', this)">
+                Hoy
+              </button>
+            </div>
+            <div class="tasks-list" id="tasksList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VISTA CALENDARIO -->
+    <!-- ============================================ -->
+    <div id="calendar-view" class="view-section" style="display: none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>📅</span> Calendario</div>
+        </div>
+        <div class="card-body">
+          <div class="calendar-full">
+            <div class="calendar-nav">
+              <div class="calendar-views">
+                <button class="view-btn" onclick="setCalendarView('day')">
+                  Día
+                </button>
+                <button class="view-btn" onclick="setCalendarView('week')">
+                  Semana
+                </button>
+                <button class="view-btn active" onclick="setCalendarView('month')">
+                  Mes
+                </button>
+              </div>
+              <div class="calendar-nav-arrows">
+                <button class="nav-arrow" onclick="navigateCalendar(-1)">
+                  ◀
+                </button>
+                <span class="current-period" id="currentPeriodFull"></span>
+                <button class="nav-arrow" onclick="navigateCalendar(1)">
+                  ▶
+                </button>
+              </div>
+            </div>
+            <div class="calendar-grid" id="calendarGridFull"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VISTA HORARIO SEMANAL -->
+    <!-- ============================================ -->
+    <div id="schedule-view" class="view-section" style="display: none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>🕒</span> Horario Semanal</div>
+          <button class="btn" onclick="openModal('schedule')">
+            <span>+</span> Agregar Actividad
           </button>
         </div>
-      </div>
-
-
-
-      <!-- ============================================ -->
-      <!-- VISTA DASHBOARD (Principal) -->
-      <!-- ============================================ -->
-      <div id="dashboard-view" class="dashboard-grid view-section">
-        <!-- Welcome Greeting Section -->
-        <div class="welcome-container mb-4">
-          <div class="welcome-text">
-            <h2 id="greeting-title">Hola, Youri 👋</h2>
-            <p class="text-muted">Aquí tienes un resumen de tu día.</p>
-          </div>
-          <div class="date-display" id="header-date"></div>
-        </div>
-
-        <!-- Kanban Board -->
-        <div class="card kanban-card">
-          <div class="card-header">
-            <div class="card-title"><span>◈</span> Tablero Kanban</div>
-            <div class="kanban-controls">
-              <div class="search-box">
-                <input type="text" placeholder="Buscar tareas..." id="kanbanSearch"
-                  oninput="filterKanban(this.value)" />
-              </div>
-              <button class="btn-secondary" onclick="clearKanbanSearch()">
-                Limpiar
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="kanban-container">
-              <!-- Columna: Por Hacer -->
-              <div class="kanban-column kanban-pending" id="colPending" data-status="pending">
-                <div class="kanban-header"><span>⏳</span> Por Hacer</div>
-                <div id="kanbanPending"></div>
-                <button class="add-task-btn" onclick="openModal('kanban')">
-                  Agregar tarea
-                </button>
-              </div>
-              <!-- Columna: En Proceso -->
-              <div class="kanban-column kanban-progress" id="colProgress" data-status="progress">
-                <div class="kanban-header"><span>▶</span> En Proceso</div>
-                <div id="kanbanProgress"></div>
-                <button class="add-task-btn" onclick="openModal('kanban', 'progress')">
-                  Agregar tarea
-                </button>
-              </div>
-              <!-- Columna: Completadas -->
-              <div class="kanban-column kanban-done" id="colDone" data-status="done">
-                <div class="kanban-header"><span>✔</span> Completadas</div>
-                <div id="kanbanDone"></div>
-                <button class="add-task-btn" onclick="openModal('kanban', 'done')">
-                  Agregar tarea
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Calendar (Mini) -->
-        <div class="right-column">
-          <div class="card calendar-card">
-            <div class="card-header">
-              <div class="card-title"><span>◐</span> Calendario</div>
-            </div>
-            <div class="card-body">
-              <div class="calendar-nav">
-                <div class="calendar-views">
-                  <button class="view-btn" id="viewDay" onclick="setCalendarView('day')">
-                    Día
-                  </button>
-                  <button class="view-btn" id="viewWeek" onclick="setCalendarView('week')">
-                    Semana
-                  </button>
-                  <button class="view-btn active" id="viewMonth" onclick="setCalendarView('month')">
-                    Mes
-                  </button>
-                </div>
-                <div class="calendar-nav-arrows">
-                  <button class="nav-arrow" onclick="navigateCalendar(-1)">
-                    ◀
-                  </button>
-                  <span class="current-period" id="currentPeriod"></span>
-                  <button class="nav-arrow" onclick="navigateCalendar(1)">
-                    ▶
-                  </button>
-                </div>
-              </div>
-              <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Habits & Tasks - 50/50 Split -->
-        <div class="habits-tasks-row">
-          <!-- Hábitos -->
-          <div class="card habits-card">
-            <div class="card-header">
-              <div class="card-title"><span>◉</span> Hábitos</div>
-              <button class="btn-secondary" onclick="openModal('habit')">
-                + Nuevo
-              </button>
-            </div>
-            <div class="card-body" id="habitsList"></div>
-          </div>
-
-          <!-- Lista de Tareas -->
-          <div class="card tasks-card">
-            <div class="card-header">
-              <div class="card-title"><span>◑</span> Mis Tareas</div>
-              <div style="display: flex; gap: 8px">
-                <div class="search-box">
-                  <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)" />
-                </div>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="filters" style="margin-bottom: 16px">
-                <button class="filter-btn active" onclick="setFilter('all', this)">
-                  Todas
-                </button>
-                <button class="filter-btn" onclick="setFilter('pending', this)">
-                  Pendientes
-                </button>
-                <button class="filter-btn" onclick="setFilter('completed', this)">
-                  Completadas
-                </button>
-                <button class="filter-btn" onclick="setFilter('today', this)">
-                  Hoy
-                </button>
-              </div>
-              <div class="tasks-list" id="tasksList"></div>
-            </div>
+        <div class="card-body">
+          <div class="schedule-grid">
+            <div class="schedule-header-cell time-col">Hora</div>
+            <div class="schedule-header-cell">Lunes</div>
+            <div class="schedule-header-cell">Martes</div>
+            <div class="schedule-header-cell">Miércoles</div>
+            <div class="schedule-header-cell">Jueves</div>
+            <div class="schedule-header-cell">Viernes</div>
+            <div class="schedule-header-cell">Sábado</div>
+            <div class="schedule-header-cell">Domingo</div>
+            <div id="schedule-grid-content" class="schedule-content"></div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- ============================================ -->
-      <!-- VISTA CALENDARIO -->
-      <!-- ============================================ -->
-      <div id="calendar-view" class="view-section" style="display: none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><span>📅</span> Calendario</div>
+    <!-- ============================================ -->
+    <!-- VISTA HÁBITOS -->
+    <!-- ============================================ -->
+    <div id="habits-view" class="view-section" style="display: none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🎯</span> Seguimiento de Hábitos
           </div>
-          <div class="card-body">
-            <div class="calendar-full">
-              <div class="calendar-nav">
-                <div class="calendar-views">
-                  <button class="view-btn" onclick="setCalendarView('day')">
-                    Día
-                  </button>
-                  <button class="view-btn" onclick="setCalendarView('week')">
-                    Semana
-                  </button>
-                  <button class="view-btn active" onclick="setCalendarView('month')">
-                    Mes
-                  </button>
-                </div>
-                <div class="calendar-nav-arrows">
-                  <button class="nav-arrow" onclick="navigateCalendar(-1)">
-                    ◀
-                  </button>
-                  <span class="current-period" id="currentPeriodFull"></span>
-                  <button class="nav-arrow" onclick="navigateCalendar(1)">
-                    ▶
-                  </button>
-                </div>
-              </div>
-              <div class="calendar-grid" id="calendarGridFull"></div>
-            </div>
-          </div>
+          <button class="btn-primary" onclick="openModal('habit')">
+            <span>+</span> Nuevo Hábito
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="habitsListFull"></div>
         </div>
       </div>
+    </div>
 
-      <!-- ============================================ -->
-      <!-- VISTA HORARIO SEMANAL -->
-      <!-- ============================================ -->
-      <div id="schedule-view" class="view-section" style="display: none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><span>🕒</span> Horario Semanal</div>
-            <button class="btn" onclick="openModal('schedule')">
-              <span>+</span> Agregar Actividad
+    <!-- ============================================ -->
+    <!-- VISTA TIME BLOCKING -->
+    <!-- ============================================ -->
+    <div id="timeblocking-view" class="view-section" style="display: none">
+      <div class="tb-container">
+        <div class="tb-header">
+          <div class="tb-header-left">
+            <h1 class="tb-title">Weekly Planner</h1>
+          </div>
+          <div class="tb-header-center">
+            <button class="tb-nav-btn" onclick="navigateTBWeek(-1)">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <div class="tb-week-label">
+              <span class="material-icons">calendar_today</span>
+              <span id="tbWeekLabel">Nov 18 - 24, 2023</span>
+            </div>
+            <button class="tb-nav-btn" onclick="navigateTBWeek(1)">
+              <span class="material-icons">chevron_right</span>
             </button>
           </div>
-          <div class="card-body">
-            <div class="schedule-grid">
-              <div class="schedule-header-cell time-col">Hora</div>
-              <div class="schedule-header-cell">Lunes</div>
-              <div class="schedule-header-cell">Martes</div>
-              <div class="schedule-header-cell">Miércoles</div>
-              <div class="schedule-header-cell">Jueves</div>
-              <div class="schedule-header-cell">Viernes</div>
-              <div class="schedule-header-cell">Sábado</div>
-              <div class="schedule-header-cell">Domingo</div>
-              <div id="schedule-grid-content" class="schedule-content"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============================================ -->
-      <!-- VISTA HÁBITOS -->
-      <!-- ============================================ -->
-      <div id="habits-view" class="view-section" style="display: none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>🎯</span> Seguimiento de Hábitos
-            </div>
-            <button class="btn-primary" onclick="openModal('habit')">
-              <span>+</span> Nuevo Hábito
+          <div class="tb-header-right">
+            <button class="tb-add-btn" onclick="generateTimeBlocking()">
+              <span class="material-icons">add</span>
+              Generar
             </button>
           </div>
-          <div class="card-body">
-            <div id="habitsListFull"></div>
-          </div>
         </div>
-      </div>
 
-      <!-- ============================================ -->
-      <!-- VISTA TIME BLOCKING -->
-      <!-- ============================================ -->
-      <div id="timeblocking-view" class="view-section" style="display: none">
-        <div class="tb-container">
-          <div class="tb-header">
-            <div class="tb-header-left">
-              <h1 class="tb-title">Weekly Planner</h1>
-            </div>
-            <div class="tb-header-center">
-              <button class="tb-nav-btn" onclick="navigateTBWeek(-1)">
-                <span class="material-icons">chevron_left</span>
-              </button>
-              <div class="tb-week-label">
-                <span class="material-icons">calendar_today</span>
-                <span id="tbWeekLabel">Nov 18 - 24, 2023</span>
+        <div class="tb-main">
+          <div class="tb-calendar-wrapper">
+            <div class="tb-calendar-header">
+              <div class="tb-time-gmt">GMT-5</div>
+              <div class="tb-day-header" data-day="0">
+                <div class="tb-day-name">Lun</div>
+                <div class="tb-day-num">-</div>
               </div>
-              <button class="tb-nav-btn" onclick="navigateTBWeek(1)">
-                <span class="material-icons">chevron_right</span>
-              </button>
+              <div class="tb-day-header" data-day="1">
+                <div class="tb-day-name">Mar</div>
+                <div class="tb-day-num">-</div>
+              </div>
+              <div class="tb-day-header" data-day="2">
+                <div class="tb-day-name">Mié</div>
+                <div class="tb-day-num">-</div>
+              </div>
+              <div class="tb-day-header" data-day="3">
+                <div class="tb-day-name">Jue</div>
+                <div class="tb-day-num">-</div>
+              </div>
+              <div class="tb-day-header" data-day="4">
+                <div class="tb-day-name">Vie</div>
+                <div class="tb-day-num">-</div>
+              </div>
+              <div class="tb-day-header tb-day-weekend" data-day="5">
+                <div class="tb-day-name">Sáb</div>
+                <div class="tb-day-num">-</div>
+              </div>
+              <div class="tb-day-header tb-day-weekend" data-day="6">
+                <div class="tb-day-name">Dom</div>
+                <div class="tb-day-num">-</div>
+              </div>
             </div>
-            <div class="tb-header-right">
-              <button class="tb-add-btn" onclick="generateTimeBlocking()">
-                <span class="material-icons">add</span>
-                Generar
-              </button>
+
+            <div class="tb-calendar-body">
+              <div class="tb-time-column" id="tbTimeColumn"></div>
+              <div class="tb-grid-lines" id="tbGridLines"></div>
+              <div class="tb-current-time-line" id="tbCurrentTimeLine" style="display: none">
+                <div class="tb-current-dot"></div>
+                <div class="tb-current-line"></div>
+              </div>
+              <div class="tb-blocks-container" id="tbBlocksContainer"></div>
             </div>
           </div>
 
-          <div class="tb-main">
-            <div class="tb-calendar-wrapper">
-              <div class="tb-calendar-header">
-                <div class="tb-time-gmt">GMT-5</div>
-                <div class="tb-day-header" data-day="0">
-                  <div class="tb-day-name">Lun</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header" data-day="1">
-                  <div class="tb-day-name">Mar</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header" data-day="2">
-                  <div class="tb-day-name">Mié</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header" data-day="3">
-                  <div class="tb-day-name">Jue</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header" data-day="4">
-                  <div class="tb-day-name">Vie</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header tb-day-weekend" data-day="5">
-                  <div class="tb-day-name">Sáb</div>
-                  <div class="tb-day-num">-</div>
-                </div>
-                <div class="tb-day-header tb-day-weekend" data-day="6">
-                  <div class="tb-day-name">Dom</div>
-                  <div class="tb-day-num">-</div>
-                </div>
+          <div class="tb-sidebar">
+            <div class="tb-backlog">
+              <div class="tb-backlog-header">
+                <h2>Pendientes</h2>
+                <span class="tb-backlog-count" id="tbBacklogCount">0</span>
               </div>
-
-              <div class="tb-calendar-body">
-                <div class="tb-time-column" id="tbTimeColumn"></div>
-                <div class="tb-grid-lines" id="tbGridLines"></div>
-                <div class="tb-current-time-line" id="tbCurrentTimeLine" style="display: none">
-                  <div class="tb-current-dot"></div>
-                  <div class="tb-current-line"></div>
-                </div>
-                <div class="tb-blocks-container" id="tbBlocksContainer"></div>
-              </div>
+              <p class="tb-backlog-hint">Arrastra al calendario</p>
+              <div class="tb-backlog-list" id="tbBacklogList"></div>
             </div>
 
-            <div class="tb-sidebar">
-              <div class="tb-backlog">
-                <div class="tb-backlog-header">
-                  <h2>Pendientes</h2>
-                  <span class="tb-backlog-count" id="tbBacklogCount">0</span>
-                </div>
-                <p class="tb-backlog-hint">Arrastra al calendario</p>
-                <div class="tb-backlog-list" id="tbBacklogList"></div>
+            <div class="tb-stats-card">
+              <div class="tb-stats-header">
+                <h2>Tiempo de Foco</h2>
+                <span class="tb-stats-trend" id="tbStatsTrend">+0%</span>
               </div>
-
-              <div class="tb-stats-card">
-                <div class="tb-stats-header">
-                  <h2>Tiempo de Foco</h2>
-                  <span class="tb-stats-trend" id="tbStatsTrend">+0%</span>
+              <div class="tb-stats-main">
+                <div class="tb-stats-hours" id="totalPlannedTime">0h</div>
+                <div class="tb-stacks-chart">
+                  <div class="tb-stack-bar" style="height: 40%"></div>
+                  <div class="tb-stack-bar" style="height: 70%"></div>
+                  <div class="tb-stack-bar" style="height: 50%"></div>
+                  <div class="tb-stack-bar tb-stack-active" style="height: 100%"></div>
                 </div>
-                <div class="tb-stats-main">
-                  <div class="tb-stats-hours" id="totalPlannedTime">0h</div>
-                  <div class="tb-stacks-chart">
-                    <div class="tb-stack-bar" style="height: 40%"></div>
-                    <div class="tb-stack-bar" style="height: 70%"></div>
-                    <div class="tb-stack-bar" style="height: 50%"></div>
-                    <div class="tb-stack-bar tb-stack-active" style="height: 100%"></div>
-                  </div>
+              </div>
+              <div class="tb-stats-footer">
+                <div class="tb-stat-item">
+                  <span class="tb-stat-icon">📊</span>
+                  <span class="tb-stat-label">Tareas:</span>
+                  <span class="tb-stat-value" id="totalTasksCount">0</span>
                 </div>
-                <div class="tb-stats-footer">
-                  <div class="tb-stat-item">
-                    <span class="tb-stat-icon">📊</span>
-                    <span class="tb-stat-label">Tareas:</span>
-                    <span class="tb-stat-value" id="totalTasksCount">0</span>
-                  </div>
-                  <div class="tb-stat-item">
-                    <span class="tb-stat-icon">🎯</span>
-                    <span class="tb-stat-label">Productividad:</span>
-                    <span class="tb-stat-value" id="focusTimePercent">0%</span>
-                  </div>
+                <div class="tb-stat-item">
+                  <span class="tb-stat-icon">🎯</span>
+                  <span class="tb-stat-label">Productividad:</span>
+                  <span class="tb-stat-value" id="focusTimePercent">0%</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- ============================================ -->
-      <!-- VISTA POMODORO -->
-      <!-- ============================================ -->
-      <div id="pomodoro-view" class="view-section" style="display: none">
-        <div class="pomodoro-container">
-          <div class="pomodoro-main">
-            <div class="pomodoro-timer">
-              <div class="timer-display" id="pomodoroTimer">25:00</div>
+    <!-- ============================================ -->
+    <!-- VISTA POMODORO -->
+    <!-- ============================================ -->
+    <div id="pomodoro-view" class="view-section" style="display: none">
+      <div class="pomodoro-container">
+        <div class="pomodoro-main">
+          <div class="pomodoro-timer">
+            <div class="timer-display" id="pomodoroTimer">25:00</div>
+          </div>
+          <div class="pomodoro-controls">
+            <button class="pomodoro-btn primary" id="pomodoroStartBtn" onclick="togglePomodoro()">
+              <span>▶</span> Iniciar
+            </button>
+            <button class="pomodoro-btn secondary" id="pomodoroPauseBtn" onclick="pausePomodoro()"
+              style="display: none">
+              <span>⏸</span> Pausar
+            </button>
+            <button class="pomodoro-btn secondary" onclick="resetPomodoro()">
+              <span>🔄</span> Reiniciar
+            </button>
+          </div>
+        </div>
+        <div class="pomodoro-stats">
+          <h4>Estadísticas</h4>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number" id="todayPomodoros">0</div>
+              <div class="stat-label">Hoy</div>
             </div>
-            <div class="pomodoro-controls">
-              <button class="pomodoro-btn primary" id="pomodoroStartBtn" onclick="togglePomodoro()">
-                <span>▶</span> Iniciar
+            <div class="stat-card">
+              <div class="stat-number" id="weekPomodoros">0</div>
+              <div class="stat-label">Semana</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="monthPomodoros">0</div>
+              <div class="stat-label">Mes</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="todayFocusTime">0h 0m</div>
+              <div class="stat-label">Tiempo Hoy</div>
+            </div>
+          </div>
+          <div class="pomodoro-chart-container">
+            <h5>Pomodoros Completados (Últimos 7 días)</h5>
+            <canvas id="pomodoroBarChart"></canvas>
+          </div>
+          <div class="pomodoro-goal">
+            <div class="goal-header">
+              <span>Meta Diaria</span>
+              <span id="pomodoroGoalProgress">0 / <span id="pomodoroGoalTarget">4</span></span>
+            </div>
+            <div class="goal-progress-bar">
+              <div class="goal-progress-fill" id="pomodoroProgressFill"></div>
+            </div>
+            <button class="goal-settings-btn" onclick="showPomodoroGoalSettings()">
+              <span>⚙️</span> Configurar Meta
+            </button>
+          </div>
+        </div>
+        <div class="pomodoro-settings">
+          <div class="settings-group">
+            <label class="setting-label">Duración:</label>
+            <div class="duration-selector">
+              <button class="duration-btn" onclick="setPomodoroDuration(25)" data-duration="25">
+                25 min
               </button>
-              <button class="pomodoro-btn secondary" id="pomodoroPauseBtn" onclick="pausePomodoro()"
-                style="display: none">
-                <span>⏸</span> Pausar
+              <button class="duration-btn" onclick="setPomodoroDuration(45)" data-duration="45">
+                45 min
               </button>
-              <button class="pomodoro-btn secondary" onclick="resetPomodoro()">
-                <span>🔄</span> Reiniciar
+              <button class="duration-btn" onclick="setPomodoroDuration(60)" data-duration="60">
+                60 min
               </button>
             </div>
           </div>
-          <div class="pomodoro-stats">
-            <h4>Estadísticas</h4>
+          <div class="settings-group">
+            <label class="setting-label">Meta Diaria:</label>
+            <div class="duration-selector">
+              <button class="duration-btn" onclick="setPomodoroGoal(2)" data-goal="2">2</button>
+              <button class="duration-btn" onclick="setPomodoroGoal(4)" data-goal="4">4</button>
+              <button class="duration-btn" onclick="setPomodoroGoal(6)" data-goal="6">6</button>
+              <button class="duration-btn" onclick="setPomodoroGoal(8)" data-goal="8">8</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VISTA ENERGY MANAGEMENT -->
+    <!-- ============================================ -->
+    <div id="energy-view" class="view-section" style="display: none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>⚡</span> Energy Management - Optimiza Tu Energía
+          </div>
+          <div class="energy-controls">
+            <button class="btn-primary" onclick="logEnergyLevel()">
+              <span>📊</span> Registrar Mi Energía
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="energy-chart" id="energyChart"></div>
+          <div class="energy-insights">
+            <h3>💡 Insights de Energía</h3>
+            <div class="insights-grid">
+              <div class="insight-card">
+                <div class="insight-icon">🌅</div>
+                <div class="insight-title">Tu mejor mañana</div>
+                <div class="insight-value" id="bestMorning">
+                  9:00 - 11:00
+                </div>
+              </div>
+              <div class="insight-card">
+                <div class="insight-icon">☀️</div>
+                <div class="insight-title">Tu mejor tarde</div>
+                <div class="insight-value" id="bestAfternoon">
+                  14:00 - 16:00
+                </div>
+              </div>
+              <div class="insight-card">
+                <div class="insight-icon">🧠</div>
+                <div class="insight-title">Tareas complejas</div>
+                <div class="insight-value" id="complexTasksTime">
+                  Mañana
+                </div>
+              </div>
+              <div class="insight-card">
+                <div class="insight-icon">📝</div>
+                <div class="insight-title">Tareas ligeras</div>
+                <div class="insight-value" id="lightTasksTime">Tarde</div>
+              </div>
+            </div>
+          </div>
+          <div class="energy-recommendations">
+            <h3>🎯 Recomendaciones para Hoy</h3>
+            <div id="energyRecommendations" class="recommendations-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VISTA ESTADÍSTICAS -->
+    <!-- ============================================ -->
+    <div id="stats-view" class="view-section" style="display: none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📊</span> Estadísticas y Análisis
+          </div>
+          <div class="stats-period-selector">
+            <button class="filter-btn active" onclick="setStatsPeriod('week', this)">
+              Semana
+            </button>
+            <button class="filter-btn" onclick="setStatsPeriod('month', this)">
+              Mes
+            </button>
+            <button class="filter-btn" onclick="setStatsPeriod('year', this)">
+              Año
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Stats Overview -->
+          <div class="stats-overview">
             <div class="stats-grid">
               <div class="stat-card">
-                <div class="stat-number" id="todayPomodoros">0</div>
-                <div class="stat-label">Hoy</div>
+                <div class="stat-icon">📋</div>
+                <div class="stat-number" id="totalTasksStat">0</div>
+                <div class="stat-label">Total Tareas</div>
+                <div class="stat-trend positive" id="totalTasksTrend">
+                  +0 esta semana
+                </div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="weekPomodoros">0</div>
-                <div class="stat-label">Semana</div>
+                <div class="stat-icon">✅</div>
+                <div class="stat-number" id="completedTasksStat">0</div>
+                <div class="stat-label">Completadas</div>
+                <div class="stat-trend positive" id="completedTrend">
+                  +0 esta semana
+                </div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="monthPomodoros">0</div>
-                <div class="stat-label">Mes</div>
+                <div class="stat-icon">📈</div>
+                <div class="stat-number" id="productivityRate">0%</div>
+                <div class="stat-label">Productividad</div>
+                <div class="stat-trend" id="productivityTrend">
+                  0% vs semana anterior
+                </div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="todayFocusTime">0h 0m</div>
-                <div class="stat-label">Tiempo Hoy</div>
+                <div class="stat-icon">🔥</div>
+                <div class="stat-number" id="currentStreakStat">0</div>
+                <div class="stat-label">Días de Racha</div>
+                <div class="stat-trend" id="streakTrend">
+                  Mejor racha: 0
+                </div>
               </div>
-            </div>
-            <div class="pomodoro-chart-container">
-              <h5>Pomodoros Completados (Últimos 7 días)</h5>
-              <canvas id="pomodoroBarChart"></canvas>
-            </div>
-            <div class="pomodoro-goal">
-              <div class="goal-header">
-                <span>Meta Diaria</span>
-                <span id="pomodoroGoalProgress">0 / <span id="pomodoroGoalTarget">4</span></span>
+              <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-number" id="avgTimeStat">0min</div>
+                <div class="stat-label">Tiempo Promedio</div>
+                <div class="stat-trend" id="timeTrend">Por tarea</div>
               </div>
-              <div class="goal-progress-bar">
-                <div class="goal-progress-fill" id="pomodoroProgressFill"></div>
+              <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-number" id="habitsCompletedStat">0</div>
+                <div class="stat-label">Hábitos Cumplidos</div>
+                <div class="stat-trend positive" id="habitsTrend">
+                  +0 esta semana
+                </div>
               </div>
-              <button class="goal-settings-btn" onclick="showPomodoroGoalSettings()">
-                <span>⚙️</span> Configurar Meta
-              </button>
+              <div class="stat-card">
+                <div class="stat-icon">🍅</div>
+                <div class="stat-number" id="pomodoroStat">0</div>
+                <div class="stat-label">Pomodoros</div>
+                <div class="stat-trend" id="pomodoroTrend">
+                  0h de enfoque
+                </div>
+              </div>
+              <div class="stat-card highlight">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-number" id="scoreStat">0</div>
+                <div class="stat-label">Puntuación</div>
+                <div class="stat-trend" id="scoreTrend">
+                  Nivel: Principiante
+                </div>
+              </div>
             </div>
           </div>
-          <div class="pomodoro-settings">
-            <div class="settings-group">
-              <label class="setting-label">Duración:</label>
-              <div class="duration-selector">
-                <button class="duration-btn" onclick="setPomodoroDuration(25)" data-duration="25">
-                  25 min
-                </button>
-                <button class="duration-btn" onclick="setPomodoroDuration(45)" data-duration="45">
-                  45 min
-                </button>
-                <button class="duration-btn" onclick="setPomodoroDuration(60)" data-duration="60">
-                  60 min
-                </button>
+
+          <!-- Charts -->
+          <div class="stats-charts">
+            <div class="chart-row">
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h4>Tareas por Estado</h4>
+                  <div class="chart-legend" id="statusChartLegend"></div>
+                </div>
+                <canvas id="tasksByStatusChart"></canvas>
+              </div>
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h4>Productividad Semanal</h4>
+                  <div class="chart-legend" id="weeklyChartLegend"></div>
+                </div>
+                <canvas id="weeklyProductivityChart"></canvas>
               </div>
             </div>
-            <div class="settings-group">
-              <label class="setting-label">Meta Diaria:</label>
-              <div class="duration-selector">
-                <button class="duration-btn" onclick="setPomodoroGoal(2)" data-goal="2">2</button>
-                <button class="duration-btn" onclick="setPomodoroGoal(4)" data-goal="4">4</button>
-                <button class="duration-btn" onclick="setPomodoroGoal(6)" data-goal="6">6</button>
-                <button class="duration-btn" onclick="setPomodoroGoal(8)" data-goal="8">8</button>
+            <div class="chart-row">
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h4>Tendencia de Hábitos</h4>
+                </div>
+                <canvas id="habitsTrendChart"></canvas>
+              </div>
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h4>Distribución por Prioridad</h4>
+                </div>
+                <canvas id="priorityChart"></canvas>
+              </div>
+            </div>
+            <div class="chart-row">
+              <div class="chart-card full-width">
+                <div class="chart-header">
+                  <h4>Registro de Actividad Reciente</h4>
+                </div>
+                <canvas id="recentTasksChart"></canvas>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- ============================================ -->
-      <!-- VISTA ENERGY MANAGEMENT -->
-      <!-- ============================================ -->
-      <div id="energy-view" class="view-section" style="display: none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>⚡</span> Energy Management - Optimiza Tu Energía
-            </div>
-            <div class="energy-controls">
-              <button class="btn-primary" onclick="logEnergyLevel()">
-                <span>📊</span> Registrar Mi Energía
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="energy-chart" id="energyChart"></div>
-            <div class="energy-insights">
-              <h3>💡 Insights de Energía</h3>
-              <div class="insights-grid">
-                <div class="insight-card">
-                  <div class="insight-icon">🌅</div>
-                  <div class="insight-title">Tu mejor mañana</div>
-                  <div class="insight-value" id="bestMorning">
-                    9:00 - 11:00
-                  </div>
-                </div>
-                <div class="insight-card">
-                  <div class="insight-icon">☀️</div>
-                  <div class="insight-title">Tu mejor tarde</div>
-                  <div class="insight-value" id="bestAfternoon">
-                    14:00 - 16:00
-                  </div>
-                </div>
-                <div class="insight-card">
-                  <div class="insight-icon">🧠</div>
-                  <div class="insight-title">Tareas complejas</div>
-                  <div class="insight-value" id="complexTasksTime">
-                    Mañana
-                  </div>
-                </div>
-                <div class="insight-card">
-                  <div class="insight-icon">📝</div>
-                  <div class="insight-title">Tareas ligeras</div>
-                  <div class="insight-value" id="lightTasksTime">Tarde</div>
-                </div>
-              </div>
-            </div>
-            <div class="energy-recommendations">
-              <h3>🎯 Recomendaciones para Hoy</h3>
-              <div id="energyRecommendations" class="recommendations-list"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============================================ -->
-      <!-- VISTA ESTADÍSTICAS -->
-      <!-- ============================================ -->
-      <div id="stats-view" class="view-section" style="display: none">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>📊</span> Estadísticas y Análisis
-            </div>
-            <div class="stats-period-selector">
-              <button class="filter-btn active" onclick="setStatsPeriod('week', this)">
-                Semana
-              </button>
-              <button class="filter-btn" onclick="setStatsPeriod('month', this)">
-                Mes
-              </button>
-              <button class="filter-btn" onclick="setStatsPeriod('year', this)">
-                Año
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <!-- Stats Overview -->
-            <div class="stats-overview">
-              <div class="stats-grid">
-                <div class="stat-card">
-                  <div class="stat-icon">📋</div>
-                  <div class="stat-number" id="totalTasksStat">0</div>
-                  <div class="stat-label">Total Tareas</div>
-                  <div class="stat-trend positive" id="totalTasksTrend">
-                    +0 esta semana
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">✅</div>
-                  <div class="stat-number" id="completedTasksStat">0</div>
-                  <div class="stat-label">Completadas</div>
-                  <div class="stat-trend positive" id="completedTrend">
-                    +0 esta semana
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">📈</div>
-                  <div class="stat-number" id="productivityRate">0%</div>
-                  <div class="stat-label">Productividad</div>
-                  <div class="stat-trend" id="productivityTrend">
-                    0% vs semana anterior
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">🔥</div>
-                  <div class="stat-number" id="currentStreakStat">0</div>
-                  <div class="stat-label">Días de Racha</div>
-                  <div class="stat-trend" id="streakTrend">
-                    Mejor racha: 0
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">⏱️</div>
-                  <div class="stat-number" id="avgTimeStat">0min</div>
-                  <div class="stat-label">Tiempo Promedio</div>
-                  <div class="stat-trend" id="timeTrend">Por tarea</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">🎯</div>
-                  <div class="stat-number" id="habitsCompletedStat">0</div>
-                  <div class="stat-label">Hábitos Cumplidos</div>
-                  <div class="stat-trend positive" id="habitsTrend">
-                    +0 esta semana
-                  </div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-icon">🍅</div>
-                  <div class="stat-number" id="pomodoroStat">0</div>
-                  <div class="stat-label">Pomodoros</div>
-                  <div class="stat-trend" id="pomodoroTrend">
-                    0h de enfoque
-                  </div>
-                </div>
-                <div class="stat-card highlight">
-                  <div class="stat-icon">⭐</div>
-                  <div class="stat-number" id="scoreStat">0</div>
-                  <div class="stat-label">Puntuación</div>
-                  <div class="stat-trend" id="scoreTrend">
-                    Nivel: Principiante
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Charts -->
-            <div class="stats-charts">
-              <div class="chart-row">
-                <div class="chart-card">
-                  <div class="chart-header">
-                    <h4>Tareas por Estado</h4>
-                    <div class="chart-legend" id="statusChartLegend"></div>
-                  </div>
-                  <canvas id="tasksByStatusChart"></canvas>
-                </div>
-                <div class="chart-card">
-                  <div class="chart-header">
-                    <h4>Productividad Semanal</h4>
-                    <div class="chart-legend" id="weeklyChartLegend"></div>
-                  </div>
-                  <canvas id="weeklyProductivityChart"></canvas>
-                </div>
-              </div>
-              <div class="chart-row">
-                <div class="chart-card">
-                  <div class="chart-header">
-                    <h4>Tendencia de Hábitos</h4>
-                  </div>
-                  <canvas id="habitsTrendChart"></canvas>
-                </div>
-                <div class="chart-card">
-                  <div class="chart-header">
-                    <h4>Distribución por Prioridad</h4>
-                  </div>
-                  <canvas id="priorityChart"></canvas>
-                </div>
-              </div>
-              <div class="chart-row">
-                <div class="chart-card full-width">
-                  <div class="chart-header">
-                    <h4>Registro de Actividad Reciente</h4>
-                  </div>
-                  <canvas id="recentTasksChart"></canvas>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
     </div>
   </main>
 
@@ -842,6 +845,111 @@
       <h2>⏰ ¡Tiempo Completado!</h2>
       <p id="alarmMessage">La tarea ha terminado</p>
       <button class="alarm-btn" onclick="stopAlarm()">Detener Alarma</button>
+    </div>
+  </div>
+
+  <!-- Productivity Assistant Modal -->
+  <div class="modal-overlay" id="assistantOverlay" onclick="closeAssistantModal(event)">
+    <div class="zen-modal assistant-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span style="font-size: 1.5rem; margin-right: 8px;">🤖</span>
+          Asistente de Productividad AI
+        </div>
+        <button class="modal-close" onclick="closeAssistantModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding: 0; height: 500px;">
+        <div class="assistant-content">
+          <!-- Chat Messages -->
+          <div class="assistant-messages" id="assistantMessages">
+            <div class="assistant-message assistant-bot">
+              <div class="message-icon">🤖</div>
+              <div class="message-content">
+                <div class="message-title">¡Hola! Soy tu asistente de productividad</div>
+                <div class="message-text" id="assistantGreeting">Analizando tus datos...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Area -->
+          <div class="assistant-input-area">
+            <div class="assistant-input-wrapper">
+              <input type="text" id="assistantInput" class="assistant-input"
+                placeholder="Pregúntame sobre tu productividad..." onkeypress="handleAssistantKeypress(event)">
+              <button class="assistant-send-btn" onclick="sendAssistantMessage()">
+                <span class="material-icons">send</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Plan Generator Modal -->
+  <div class="modal-overlay" id="planOverlay" onclick="closePlanModal(event)">
+    <div class="zen-modal plan-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span style="font-size: 1.5rem; margin-right: 8px;">📅</span>
+          Generador de Planes Semanales
+        </div>
+        <button class="modal-close" onclick="closePlanModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <div class="plan-content">
+          <!-- Plan Generator Form -->
+          <div class="plan-generator-form">
+            <h3>🎯 Configurar Objetivos Semanales</h3>
+
+            <div class="form-group">
+              <label class="form-label">Objetivo principal</label>
+              <select id="planObjective" class="form-input" style="width: 100%;">
+                <option value="balance">Balance entre trabajo y vida personal</option>
+                <option value="deepwork">Foco profundo en proyectos grandes</option>
+                <option value="habits">Completar todos los hábitos</option>
+                <option value="tasks">Maximizar cantidad de tareas</option>
+                <option value="learning">Aprender y desarrollarse</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Días de focus (Pomodoros diarios)</label>
+              <input type="number" id="planPomodoroGoal" class="form-input" value="4" min="1" max="12"
+                style="width: 100px;">
+              <small style="color: var(--text-muted);">por día</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Días mínimos de hábitos</label>
+              <input type="number" id="planHabitDays" class="form-input" value="5" min="0" max="7"
+                style="width: 100px;">
+              <small style="color: var(--text-muted);">por semana</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Prioridad de tareas</label>
+              <select id="planPriority" class="form-input" style="width: 100%;">
+                <option value="high">ALTA - Lo más importante primero</option>
+                <option value="medium" selected>MEDIA - Equilibrado</option>
+                <option value="low">BAJA - Todo lo demás</option>
+              </select>
+            </div>
+
+            <button class="btn-primary" onclick="generateWeeklyPlan()" style="width: 100%; margin-top: 16px;">
+              🚀 Generar Plan
+            </button>
+          </div>
+
+          <!-- Plan Preview -->
+          <div class="plan-preview" id="planPreview" style="display: none;">
+            <h3>📋 Tu Plan Semanal</h3>
+            <div class="plan-result" id="planResult">
+              <!-- Generated plan will appear here -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -893,6 +1001,44 @@
                 <div class="settings-toggle">
                   <div class="toggle-switch active" id="toggle-animations" onclick="toggleSetting('animations')"></div>
                   <span id="animations-status">Activadas</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div class="setting-label">🌈 Tema de Color</div>
+                <div class="setting-description">
+                  Selecciona un tema para la interfaz
+                </div>
+                <div class="theme-selector">
+                  <button class="theme-btn" onclick="setTheme('default')" data-theme="default" title="Default">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#22C55E;"></span>
+                      Default
+                    </span>
+                  </button>
+                  <button class="theme-btn" onclick="setTheme('ocean')" data-theme="ocean" title="Ocean">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#0EA5E9;"></span>
+                      Ocean
+                    </span>
+                  </button>
+                  <button class="theme-btn" onclick="setTheme('sunset')" data-theme="sunset" title="Sunset">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+                      Sunset
+                    </span>
+                  </button>
+                  <button class="theme-btn" onclick="setTheme('purple')" data-theme="purple" title="Purple">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#8B5CF6;"></span>
+                      Purple
+                    </span>
+                  </button>
+                  <button class="theme-btn" onclick="setTheme('nature')" data-theme="nature" title="Nature">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                      <span style="width:8px; height:8px; border-radius:50%; background:#22C55E;"></span>
+                      Nature
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>

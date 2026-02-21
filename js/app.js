@@ -701,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
     startTimerLoop();
     initNotifications();
+    initHabitReminders();
     setupKanbanDragAndDrop();
     loadSidebarState();
     setInterval(updateScreenTime, 1000);
@@ -709,10 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', saveScreenTime);
     setInterval(updateHeaderTime, 60000);
     updateHeaderTime();
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark');
-        document.getElementById('themeText').textContent = 'Claro';
-    }
+    loadTheme();
     setupVoiceUI();
     requestNotificationPermission();
     loadCustomAudio();
@@ -1885,6 +1883,13 @@ function createHabitForm() {
                         <input type="text" id="habitDesc" class="form-input" placeholder="Detalles del hábito...">
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="habitReminders" checked>
+                            Activar recordatorios
+                        </label>
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="form-group">
                             <label class="form-label">Tiempo estimado (min)</label>
@@ -2130,6 +2135,7 @@ function handleHabitSubmit(e) {
     const durationVal = document.getElementById('habitDuration').value;
     const duration = durationVal ? parseInt(durationVal) : 30;
     const fixedTime = document.getElementById('habitTime').value || null;
+    const remindersEnabled = document.getElementById('habitReminders').checked;
 
     if (editingHabitId) {
         const habit = habits.find(h => h.id === editingHabitId);
@@ -2139,6 +2145,7 @@ function handleHabitSubmit(e) {
             habit.days = days;
             habit.duration = duration;
             habit.fixedTime = fixedTime;
+            habit.remindersEnabled = remindersEnabled;
             showNotification('Hábito actualizado');
         }
         editingHabitId = null;
@@ -2150,6 +2157,7 @@ function handleHabitSubmit(e) {
             days: days,
             duration: duration,
             fixedTime: fixedTime,
+            remindersEnabled: remindersEnabled,
             completedDates: [],
             createdAt: new Date().toISOString()
         });
@@ -2159,6 +2167,35 @@ function handleHabitSubmit(e) {
     saveData();
     renderAll();
     closeModal();
+}
+
+// Habit Reminders
+let remindersInterval = null;
+
+function initHabitReminders() {
+    if (remindersInterval) {
+        clearInterval(remindersInterval);
+    }
+
+    remindersInterval = setInterval(() => {
+        const now = new Date();
+        const currentHour = String(now.getHours()).padStart(2, '0');
+        const currentMinute = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${currentHour}:${currentMinute}`;
+        const dayOfWeek = now.getDay();
+
+        const today = new Date().toISOString().split('T')[0];
+
+        habits.forEach(habit => {
+            if (habit.remindersEnabled && 
+                habit.fixedTime === currentTime && 
+                habit.days[dayOfWeek] &&
+                !habit.completedDates.includes(today)) {
+                
+                showNotification(`⏰ ¡Es hora de: ${habit.title}!`, 'info');
+            }
+        });
+    }, 60000); // Check every minute
 }
 
 function editTask(id) {
@@ -2968,13 +3005,21 @@ function savePomodoroTimerState() {
     }));
 }
 
+function getLocalDateString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function loadPomodoroStats() {
-    const today = new Date().toDateString();
+    const today = getLocalDateString();
     const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
     const todayStats = stats[today] || { completed: 0, seconds: 0 };
 
-    pomodoroCompletedToday = todayStats.completed;
-    pomodoroTotalSecondsToday = todayStats.seconds;
+    pomodoroCompletedToday = todayStats.completed || 0;
+    pomodoroTotalSecondsToday = todayStats.seconds || 0;
 
     // Load streak
     pomodoroCurrentStreak = calculatePomodoroStreak();
@@ -2988,7 +3033,10 @@ function calculatePomodoroStreak() {
     for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const dateStr = date.toDateString();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
         if (stats[dateStr] && stats[dateStr].completed > 0) {
             streak++;
@@ -3207,7 +3255,7 @@ function completePomodoroSession() {
     localStorage.removeItem('pomodoroTimerState');
 
     // Get current session info
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     // Save detailed pomodoro record for charts
     const pomodoroHistory = JSON.parse(localStorage.getItem('pomodoroHistory')) || [];
@@ -3229,20 +3277,22 @@ function completePomodoroSession() {
     updatePomodoroStats();
     updatePomodoroGoalProgress();
 
+    // Show alarm overlay and play sound
+    document.getElementById('alarmMessage').textContent = '¡Pomodoro completado! 🎉';
+    document.getElementById('alarmOverlay').classList.add('active');
+    playAlarmSound();
+
     // Check if daily goal reached
     if (pomodoroCompletedToday >= pomodoroDailyGoal && !goalNotified) {
         goalNotified = true;
-        showNotification('🎯 ¡Meta diaria alcanzada! ' + pomodoroCompletedToday + ' pomodoros completados');
+        showNotification('🎯 ¡Meta diaria alcanzada! ' + pomodoroCompletedToday + ' pomodoros completados', 'success');
     }
-
-    // Play completion sound
-    playAlarmSound();
 
     // Reset timer
     pomodoroTimeLeft = pomodoroWorkDuration * 60;
     updatePomodoroDisplay();
 
-    showNotification('🍅 ¡Pomodoro completado! 🎉');
+    showNotification('🍅 ¡Pomodoro completado! 🎉', 'success');
 }
 
 function updatePomodoroDisplay() {
@@ -3274,10 +3324,12 @@ function updatePomodoroStats() {
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
     for (const [dateStr, data] of Object.entries(stats)) {
-        const date = new Date(dateStr);
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
         if (date >= startOfWeek) {
             weekPomodoros += data.completed || 0;
             weekSeconds += data.seconds || 0;
@@ -3366,7 +3418,10 @@ function renderPomodoroBarChart() {
     for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
         labels.push(dayName);
 
@@ -4472,13 +4527,6 @@ function scheduleTaskReminders() {
     notificationTimers.push(timer);
 }
 
-function toggleTheme() {
-    document.body.classList.toggle('dark');
-    const isDark = document.body.classList.contains('dark');
-    localStorage.setItem('darkMode', isDark);
-    document.getElementById('themeText').textContent = isDark ? 'Claro' : 'Oscuro';
-}
-
 function toggleMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -4673,8 +4721,6 @@ function exportData() {
         exportDate: new Date().toISOString(),
         version: '1.0'
     };
-
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "zen-tasks-backup_" + new Date().toISOString().slice(0, 10) + ".json");
@@ -5099,3 +5145,418 @@ function dropTaskOnSchedule(ev, day, hour) {
         showNotification('Tarea agendada');
     }
 }
+
+// Theme Functions
+function setTheme(themeName) {
+    // Remove all theme classes
+    document.body.classList.remove('dark', 'theme-ocean', 'theme-sunset', 'theme-purple', 'theme-nature');
+
+    // Add the selected theme
+    if (themeName === 'dark') {
+        document.body.classList.add('dark');
+    } else if (themeName !== 'default') {
+        document.body.classList.add(`theme-${themeName}`);
+    }
+
+    // Save preference
+    localStorage.setItem('theme', themeName);
+
+    // Update active state in settings
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.theme === themeName) {
+            btn.classList.add('active');
+        }
+    });
+
+    showNotification(`Tema ${themeName} activado`, 'info');
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'default';
+    setTheme(savedTheme);
+
+    // Update active state
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.theme === savedTheme) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// Add theme selector to sidebar navigation
+function initThemeSelector() {
+    const settingsContent = document.getElementById('settings-general');
+    if (settingsContent) {
+        const themeSection = document.createElement('div');
+        themeSection.className = 'setting-item';
+        themeSection.innerHTML = `
+            <div class="setting-label">🌈 Tema de Color</div>
+            <div class="setting-description">
+                Selecciona un tema para la interfaz
+            </div>
+            <div class="theme-selector">
+                <button class="theme-btn active" onclick="setTheme('default')" data-theme="default" title="Default">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                        <span style="width:8px; height:8px; border-radius:50%; background:#22C55E;"></span>
+                        Default
+                    </span>
+                </button>
+                <button class="theme-btn" onclick="setTheme('ocean')" data-theme="ocean" title="Ocean">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                        <span style="width:8px; height:8px; border-radius:50%; background:#0EA5E9;"></span>
+                        Ocean
+                    </span>
+                </button>
+                <button class="theme-btn" onclick="setTheme('sunset')" data-theme="sunset" title="Sunset">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                        <span style="width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+                        Sunset
+                    </span>
+                </button>
+                <button class="theme-btn" onclick="setTheme('purple')" data-theme="purple" title="Purple">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                        <span style="width:8px; height:8px; border-radius:50%; background:#8B5CF6;"></span>
+                        Purple
+                    </span>
+                </button>
+                <button class="theme-btn" onclick="setTheme('nature')" data-theme="nature" title="Nature">
+                    <span style="display:flex; gap:2px; align-items:center;">
+                        <span style="width:8px; height:8px; border-radius:50%; background:#22C55E;"></span>
+                        Nature
+                    </span>
+                </button>
+            </div>
+        `;
+        settingsContent.appendChild(themeSection);
+    }
+}
+
+// Productivity Assistant Functions
+let assistantMessages = [];
+
+function openProductivityAssistant() {
+    document.getElementById('assistantOverlay').classList.add('active');
+    updateAssistantGreeting();
+}
+
+function closeAssistantModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('assistantOverlay').classList.remove('active');
+}
+
+function handleAssistantKeypress(e) {
+    if (e.key === 'Enter') {
+        sendAssistantMessage();
+    }
+}
+
+function sendAssistantMessage() {
+    const input = document.getElementById('assistantInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message
+    addAssistantMessage(message, 'user');
+    input.value = '';
+    
+    // Process message and generate response
+    setTimeout(() => {
+        const response = generateAssistantResponse(message);
+        addAssistantMessage(response, 'bot');
+    }, 600);
+}
+
+function addAssistantMessage(text, type) {
+    const messagesContainer = document.getElementById('assistantMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `assistant-message assistant-${type}`;
+    
+    const icon = type === 'bot' ? '🤖' : '👤';
+    
+    messageDiv.innerHTML = `
+        <div class="message-icon">${icon}</div>
+        <div class="message-content">
+            <div class="message-title">${type === 'bot' ? 'Asistente AI' : 'Tú'}</div>
+            <div class="message-text">${text}</div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    assistantMessages.push({ type, text, timestamp: Date.now() });
+}
+
+function updateAssistantGreeting() {
+    const greeting = generateGreeting();
+    const greetingEl = document.getElementById('assistantGreeting');
+    if (greetingEl) {
+        greetingEl.innerHTML = greeting;
+    }
+}
+
+function generateGreeting() {
+    const totalTasks = tasks.length + kanbanTasks.length;
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    const pomodoroCompleted = pomodoroCompletedToday;
+    const pomodoroGoal = pomodoroDailyGoal;
+    const pomodoroProgress = pomodoroGoal > 0 ? Math.round((pomodoroCompleted / pomodoroGoal) * 100) : 0;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
+    const todayStats = stats[todayStr] || { completed: 0 };
+    
+    let greeting = '';
+    
+    if (totalTasks === 0) {
+        greeting = `¡Hola! Tu lista de tareas está vacía. ¿Qué te gustaría lograr hoy?`;
+    } else {
+        greeting = `¡Excelente! Tienes <strong>${totalTasks} tareas</strong> en total, con una tasa de completado del <strong>${completionRate}%</strong>.<br><br>`;
+        
+        if (pomodoroGoal > 0) {
+            greeting += `Hasta ahora has completado <strong>${pomodoroCompleted}/${pomodoroGoal} pomodoros</strong> (${pomodoroProgress}%).<br><br>`;
+        }
+        
+        greeting += `Aquí tienes mis sugerencias para mejorar tu productividad hoy:`;
+    }
+    
+    return greeting;
+}
+
+function generateAssistantResponse(message) {
+    const lowerMessage = message.toLowerCase();
+    const totalTasks = tasks.length + kanbanTasks.length;
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const pendingTasks = totalTasks - completedTasks;
+    const streak = calculateStreak(habits);
+    
+    // Task-related responses
+    if (lowerMessage.includes('tarea') || lowerMessage.includes('task')) {
+        if (lowerMessage.includes('priorizar') || lowerMessage.includes('orden')) {
+            if (pendingTasks === 0) {
+                return '¡Todo está ordenado! 🎉 Tus tareas están completadas. ¡Bien hecho!';
+            }
+            const urgentTasks = tasks.filter(t => t.priority === 'alta').length;
+            if (urgentTasks > 0) {
+                return `Basándome en tus tareas, te sugiero priorizar primero las tareas <strong>ALTA prioridad</strong> (${urgentTasks} tareas). Luego, procede con las tareas normales. Esta estrategia te ayudará a completar las más importantes primero.`;
+            }
+            return `Tienes <strong>${pendingTasks} tareas pendientes</strong>. Te sugiero comenzar con las tareas más importantes primero. ¿Te gustaría que te ayude a ordenarlas?`;
+        }
+        
+        if (lowerMessage.includes('crear') || lowerMessage.includes('agregar')) {
+            return 'Puedes agregar una nueva tarea haciendo clic en "Nueva Tarea" o usando el botón "+" en el Dashboard. ¿Qué tipo de tarea necesitas agregar?';
+        }
+        
+        if (lowerMessage.includes('completar') || lowerMessage.includes('terminar')) {
+            if (completedTasks > 0) {
+                return `¡Felicitaciones! Ya completaste <strong>${completedTasks} tareas</strong> hoy. Mantén este ritmo, es genial. ¿Te gustaría hacer una pausa o seguir trabajando?`;
+            }
+            return `Todavía no has completado tareas hoy. Empieza con una tarea pequeña y simple para ganarte confianza. ¿Qué te gustaría completar primero?`;
+        }
+    }
+    
+    // Habit-related responses
+    if (lowerMessage.includes('hábito') || lowerMessage.includes('habit')) {
+        if (streak > 0) {
+            return `¡Impresionante! Tu racha actual es de <strong>${streak} días</strong> consecutivos. ¡Manténla! ¿Te gustaría saber qué hábitos deberías priorizar hoy?`;
+        }
+        return `Tienes ${habits.length} hábitos en tu lista. Los hábitos son clave para la productividad. ¿Quieres que te ayude a priorizar los más importantes?`;
+    }
+    
+    // Pomodoro-related responses
+    if (lowerMessage.includes('pomodoro') || lowerMessage.includes('focus')) {
+        if (pomodoroGoal > 0) {
+            const percentage = Math.round((pomodoroCompleted / pomodoroGoal) * 100);
+            if (percentage >= 100) {
+                return `¡Objetivo alcanzado! 🎯 ¡Completaste tus ${pomodoroGoal} pomodoros diarios! ¿Te gustaría establecer un objetivo para mañana o descansar un poco?`;
+            }
+            return `Estás en el ${percentage}% de tu objetivo diario. Para mejorar, te sugiero hacer 1-2 pomodoros más hoy. Esto te ayudará a mantenerte enfocado.`;
+        }
+        return 'Puedes configurar tu meta diaria en la configuración. ¿Te gustaría saber más sobre el Pomodoro technique?';
+    }
+    
+    // Energy-related responses
+    if (lowerMessage.includes('energía') || lowerMessage.includes('energia') || lowerMessage.includes('energ')) {
+        return 'La energía es clave para la productividad. Te sugiero agendar tus tareas cuando tengas más energía (generalmente por la mañana). ¿Quieres que te ayude a organizar tu día según tus energías?';
+    }
+    
+    // General suggestions
+    if (lowerMessage.includes('sugerir') || lowerMessage.includes('recomendar') || lowerMessage.includes('ayudar')) {
+        const suggestions = [];
+        
+        if (pendingTasks > 5) {
+            suggestions.push('Prioriza tus tareas más importantes primero');
+        }
+        if (totalTasks > 0) {
+            suggestions.push('Haz pausas cortas cada 25-30 minutos para descansar');
+        }
+        if (habits.length > 0 && streak === 0) {
+            suggestions.push('Comienza con un hábito pequeño y hazlo diariamente');
+        }
+        if (pomodoroGoal > 0 && pomodoroCompleted < pomodoroGoal) {
+            suggestions.push(`Sigue tu meta de ${pomodoroGoal} pomodoros diarios`);
+        }
+        
+        if (suggestions.length > 0) {
+            return 'Aquí tienes mis sugerencias para mejorar hoy:<br><br>' + suggestions.map(s => `• ${s}`).join('<br>');
+        }
+        return '¡Todo va muy bien! Mantén el ritmo y ¡sigue progresando! 🚀';
+    }
+    
+    // Greeting and closing
+    if (lowerMessage.includes('hola') || lowerMessage.includes('buenos')) {
+        return '¡Hola! 🌟 Estoy aquí para ayudarte a mejorar tu productividad. Puedo darte sugerencias sobre tus tareas, hábitos, Pomodoros o ayudarte a organizar tu día. ¿Qué te gustaría saber?';
+    }
+    
+    if (lowerMessage.includes('adios') || lowerMessage.includes('bye') || lowerMessage.includes('chau')) {
+        return '¡Hasta luego! 🎉 ¡Sigue avanzando hacia tus metas! Si necesitas ayuda más tarde, estaré aquí.';
+    }
+    
+    return 'Entiendo tu consulta. Basándome en tus datos, te sugiero:<br><br>• Priorizar tus tareas más importantes<br>• Establecer metas claras para el día<br>• Hacer pausas regulares para mantener tu energía<br><br>¿Te gustaría que te ayude con algo específico?';
+}
+
+// Generate Weekly Plan Functions
+function openPlanGenerator() {
+    document.getElementById('planOverlay').classList.add('active');
+    document.getElementById('planPreview').style.display = 'none';
+    document.getElementById('planResult').innerHTML = '';
+}
+
+function closePlanModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('planOverlay').classList.remove('active');
+}
+
+function generateWeeklyPlan() {
+    const objective = document.getElementById('planObjective').value;
+    const pomodoroGoal = parseInt(document.getElementById('planPomodoroGoal').value) || 4;
+    const habitDays = parseInt(document.getElementById('planHabitDays').value) || 5;
+    const priority = document.getElementById('planPriority').value;
+    
+    // Generate plan based on objective and data
+    const plan = generatePlanContent(objective, pomodoroGoal, habitDays, priority);
+    
+    // Display the plan
+    const previewEl = document.getElementById('planPreview');
+    const resultEl = document.getElementById('planResult');
+    
+    resultEl.innerHTML = plan;
+    previewEl.style.display = 'block';
+    
+    showNotification('Plan semanal generado correctamente', 'success');
+}
+
+function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const today = new Date();
+    
+    let tasks = [];
+    
+    // Get user tasks by priority
+    if (priority === 'high') {
+        tasks = tasks.filter(t => t.priority === 'alta');
+    } else if (priority === 'low') {
+        tasks = tasks.filter(t => t.priority === 'baja');
+    }
+    
+    // If not enough tasks, include completed ones
+    if (tasks.length < 3) {
+        const additional = tasks.filter(t => t.priority === 'media');
+        tasks = [...tasks, ...additional].slice(0, 3);
+    }
+    
+    // Build day plans
+    const dayPlans = days.map((day, index) => {
+        const isWorkDay = index < 5; // Monday-Friday
+        const pomodorosPerDay = isWorkDay ? pomodoroGoal : Math.max(1, Math.floor(pomodoroGoal / 2));
+        const completedHabits = isWorkDay ? habitDays : 0;
+        
+        // Generate tasks for the day
+        const dayTasks = tasks.slice(index * 2, (index * 2) + 2);
+        
+        let html = `
+            <div class="plan-day">
+                <div class="plan-day-header">
+                    <h4>${day}</h4>
+                    <div>
+                        <span style="background: rgba(34, 197, 94, 0.1); color: #22C55E; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">
+                            🎯 ${pomodorosPerDay} pomodoros
+                        </span>
+                        ${completedHabits > 0 ? `
+                        <span style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; margin-left: 8px;">
+                            ✓ ${completedHabits} hábitos
+                        </span>
+                        ` : ''}
+                    </div>
+                </div>
+                <ul class="plan-tasks">
+        `;
+        
+        if (dayTasks.length > 0) {
+            dayTasks.forEach(task => {
+                html += `<li>${escapeHtml(task.title)} ${task.date ? `(${task.date})` : ''}</li>`;
+            });
+        } else {
+            html += `<li>Organiza tus tareas más importantes</li>`;
+        }
+        
+        html += `</ul>`;
+        
+        // Add time blocking suggestion
+        if (isWorkDay) {
+            html += `
+                <div class="plan-suggestion">
+                    <h4>⏰ Sugerencia de Time Blocking</h4>
+                    <p>Divide tus pomodoros en bloques de 2-3 horas máximo para mantener el enfoque. Recuerda hacer pausas de 5-10 minutos entre bloques.</p>
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        return html;
+    });
+    
+    // Generate overall suggestions
+    let suggestions = '';
+    
+    if (objective === 'deepwork') {
+        suggestions = `
+            <div class="plan-suggestion">
+                <h4>📚 Estrategia de Deep Work</h4>
+                <p>Reserva tus pomodoros más grandes (45-60 min) para tareas complejas que requieren concentración total. Evita distracciones durante estos periodos.</p>
+            </div>
+        `;
+    } else if (objective === 'habits') {
+        suggestions = `
+            <div class="plan-suggestion">
+                <h4>🔄 Rutina de Hábitos</h4>
+                <p>Completa tus hábitos temprano en el día. Añádelos como tareas pendientes y ríndete al completarlos.</p>
+            </div>
+        `;
+    } else if (objective === 'learning') {
+        suggestions = `
+            <div class="plan-suggestion">
+                <h4>📖 Estrategia de Aprendizaje</h4>
+                <p>Utiliza el 50% de tus pomodoros para aprendizaje nuevo y el 50% para práctica/aplicación de lo aprendido.</p>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="plan-days">
+            ${dayPlans.join('')}
+        </div>
+        ${suggestions}
+        <div class="plan-suggestion" style="margin-top: 20px; border-color: #F59E0B; background: rgba(245, 158, 11, 0.1);">
+            <h4>💡 Tip General</h4>
+            <p>Revisa tu plan cada mañana y ajusta según tu energía y disponibilidad. La flexibilidad es clave para la productividad sostenible.</p>
+        </div>
+    `;
+}
+
