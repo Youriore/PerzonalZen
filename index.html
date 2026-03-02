@@ -90,13 +90,6 @@
           </li>
 
           <!-- Analytics -->
-          <li class="nav-section-title"><span>Análisis</span></li>
-          <li class="nav-item">
-            <a class="nav-link" href="#" onclick="openPlanGenerator()">
-              <span class="material-icons">calendar_month</span>
-              <span class="nav-text">Planes Semanales</span>
-            </a>
-          </li>
           <li class="nav-item">
             <a class="nav-link" href="#" onclick="switchView('stats')">
               <span class="material-icons">bar_chart</span>
@@ -871,73 +864,6 @@
               <button class="assistant-send-btn" onclick="sendAssistantMessage()">
                 <span class="material-icons">send</span>
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Weekly Plan Generator Modal -->
-  <div class="modal-overlay" id="planOverlay" onclick="closePlanModal(event)">
-    <div class="zen-modal plan-modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title">
-          <span style="font-size: 1.5rem; margin-right: 8px;">📅</span>
-          Generador de Planes Semanales
-        </div>
-        <button class="modal-close" onclick="closePlanModal()">×</button>
-      </div>
-      <div class="modal-body" style="padding: 0;">
-        <div class="plan-content">
-          <!-- Plan Generator Form -->
-          <div class="plan-generator-form" id="planGeneratorForm">
-            <h3>🎯 Configurar Objetivos Semanales</h3>
-
-            <div class="form-group">
-              <label class="form-label">Objetivo principal</label>
-              <select id="planObjective" class="form-input" style="width: 100%;">
-                <option value="balance">Balance entre trabajo y vida personal</option>
-                <option value="deepwork">Foco profundo en proyectos grandes</option>
-                <option value="habits">Completar todos los hábitos</option>
-                <option value="tasks">Maximizar cantidad de tareas</option>
-                <option value="learning">Aprender y desarrollarse</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Días de focus (Pomodoros diarios)</label>
-              <input type="number" id="planPomodoroGoal" class="form-input" value="4" min="1" max="12"
-                style="width: 100px;">
-              <small style="color: var(--text-muted);">por día</small>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Días mínimos de hábitos</label>
-              <input type="number" id="planHabitDays" class="form-input" value="5" min="0" max="7"
-                style="width: 100px;">
-              <small style="color: var(--text-muted);">por semana</small>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Prioridad de tareas</label>
-              <select id="planPriority" class="form-input" style="width: 100%;">
-                <option value="high">ALTA - Lo más importante primero</option>
-                <option value="medium" selected>MEDIA - Equilibrado</option>
-                <option value="low">BAJA - Todo lo demás</option>
-              </select>
-            </div>
-
-            <button class="btn-primary" onclick="generateWeeklyPlan()" style="width: 100%; margin-top: 16px;">
-              🚀 Generar Plan
-            </button>
-          </div>
-
-          <!-- Plan Preview -->
-          <div class="plan-preview" id="planPreview" style="display: none;">
-            <h3>📋 Tu Plan Semanal</h3>
-            <div class="plan-result" id="planResult">
-              <!-- Generated plan will appear here -->
             </div>
           </div>
         </div>
