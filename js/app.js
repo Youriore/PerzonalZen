@@ -1206,11 +1206,139 @@ function sendNotification(title, body) {
     speakText(`${title}. ${body}`);
 }
 
+function renderTodayTasks() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const dayIndex = today.getDay(); // 0 = domingo, 1 = lunes, etc.
+
+    const todayElement = document.getElementById('todayDate');
+    if (todayElement) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        todayElement.textContent = today.toLocaleDateString('es-ES', options);
+    }
+
+    const container = document.getElementById('todayTasksList');
+    if (!container) return;
+
+    // Get tasks for today (from regular tasks with date = today)
+    const todayTasksList = tasks.filter(task => task.date === todayStr && !task.completed);
+
+    // Get kanban tasks in pending/progress (not done)
+    const kanbanPending = kanbanTasks.filter(task => task.status !== 'done');
+
+    // Get habits scheduled for today that are not completed
+    const todayHabits = habits.filter(habit => {
+        if (!habit.days || !habit.days[dayIndex]) return false;
+        const isCompleted = habit.completedDates && habit.completedDates.includes(todayStr);
+        return !isCompleted;
+    }).map(h => ({
+        ...h,
+        source: 'habit',
+        title: h.name || h.title,
+        priority: 'media',
+        duration: h.duration || 30
+    }));
+
+    // Create task items with more info
+    const taskItems = [
+        ...todayTasksList.map(t => ({
+            ...t,
+            source: 'task',
+            duration: t.duration || 25,
+            priority: t.priority || 'media'
+        })),
+        ...kanbanPending.map(t => ({
+            ...t,
+            source: 'kanban',
+            duration: t.time || 25,
+            priority: 'media'
+        })),
+        ...todayHabits
+    ];
+
+    if (taskItems.length === 0) {
+        container.innerHTML = `
+            <div class="today-tasks-empty">
+                <span class="material-icons">check_circle</span>
+                <p>¡No hay tareas pendientes para hoy! 🎉</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = taskItems.map(task => {
+        const priority = task.priority;
+        const priorityLabel = priority === 'alta' ? 'Alta' : priority === 'media' ? 'Media' : 'Baja';
+        const priorityClass = priority === 'alta' ? 'high' : priority === 'media' ? 'medium' : 'low';
+
+        const sourceIcon = task.source === 'habit' ? 'check_circle' : task.source === 'kanban' ? 'view_kanban' : 'assignment';
+        const sourceLabel = task.source === 'habit' ? 'Hábito' : task.source === 'kanban' ? 'Kanban' : 'Tarea';
+
+        const isDone = task.completed || task.status === 'done';
+
+        return `
+            <div class="today-task-item ${isDone ? 'completed' : ''}" onclick="toggleTodayTask('${task.source}', ${task.id})">
+                <div class="today-task-checkbox ${isDone ? 'checked' : ''}"></div>
+                <div class="today-task-content">
+                    <div class="today-task-title ${isDone ? 'completed' : ''}">${task.title}</div>
+                    <div class="today-task-meta">
+                        <span class="today-task-source">
+                            <span class="material-icons">${sourceIcon}</span>
+                            ${sourceLabel}
+                        </span>
+                        <span class="today-task-duration">
+                            <span class="material-icons">schedule</span>
+                            ${task.duration || 25} min
+                        </span>
+                    </div>
+                </div>
+                <div class="today-task-priority ${priorityClass}">${priorityLabel}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleTodayTask(source, id) {
+    if (source === 'task') {
+        const task = tasks.find(t => t.id === id);
+        if (task) {
+            task.completed = !task.completed;
+            saveData();
+            renderTasks();
+            renderTodayTasks();
+        }
+    } else if (source === 'kanban') {
+        const task = kanbanTasks.find(t => t.id === id);
+        if (task) {
+            task.status = task.status === 'done' ? 'pending' : 'done';
+            saveData();
+            renderKanban();
+            renderTodayTasks();
+        }
+    } else if (source === 'habit') {
+        const habit = habits.find(h => h.id === id);
+        if (habit) {
+            const today = new Date().toISOString().split('T')[0];
+            if (!habit.completedDates) habit.completedDates = [];
+            const idx = habit.completedDates.indexOf(today);
+            if (idx > -1) {
+                habit.completedDates.splice(idx, 1);
+            } else {
+                habit.completedDates.push(today);
+            }
+            saveData();
+            renderHabits();
+            renderTodayTasks();
+        }
+    }
+}
+
 function renderAll() {
     renderKanban();
     if (typeof renderCalendar === 'function') renderCalendar();
     renderHabits();
     renderTasks();
+    renderTodayTasks();
 }
 
 // Stats function removed
@@ -2187,11 +2315,11 @@ function initHabitReminders() {
         const today = new Date().toISOString().split('T')[0];
 
         habits.forEach(habit => {
-            if (habit.remindersEnabled && 
-                habit.fixedTime === currentTime && 
+            if (habit.remindersEnabled &&
+                habit.fixedTime === currentTime &&
                 habit.days[dayOfWeek] &&
                 !habit.completedDates.includes(today)) {
-                
+
                 showNotification(`⏰ ¡Es hora de: ${habit.title}!`, 'info');
             }
         });
@@ -5255,13 +5383,13 @@ function handleAssistantKeypress(e) {
 function sendAssistantMessage() {
     const input = document.getElementById('assistantInput');
     const message = input.value.trim();
-    
+
     if (!message) return;
-    
+
     // Add user message
     addAssistantMessage(message, 'user');
     input.value = '';
-    
+
     // Process message and generate response
     setTimeout(() => {
         const response = generateAssistantResponse(message);
@@ -5273,9 +5401,9 @@ function addAssistantMessage(text, type) {
     const messagesContainer = document.getElementById('assistantMessages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `assistant-message assistant-${type}`;
-    
+
     const icon = type === 'bot' ? '🤖' : '👤';
-    
+
     messageDiv.innerHTML = `
         <div class="message-icon">${icon}</div>
         <div class="message-content">
@@ -5283,10 +5411,10 @@ function addAssistantMessage(text, type) {
             <div class="message-text">${text}</div>
         </div>
     `;
-    
+
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
+
     assistantMessages.push({ type, text, timestamp: Date.now() });
 }
 
@@ -5302,30 +5430,30 @@ function generateGreeting() {
     const totalTasks = tasks.length + kanbanTasks.length;
     const completedTasks = tasks.filter(t => t.completed).length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     const pomodoroCompleted = pomodoroCompletedToday;
     const pomodoroGoal = pomodoroDailyGoal;
     const pomodoroProgress = pomodoroGoal > 0 ? Math.round((pomodoroCompleted / pomodoroGoal) * 100) : 0;
-    
+
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const stats = JSON.parse(localStorage.getItem('pomodoroStats')) || {};
     const todayStats = stats[todayStr] || { completed: 0 };
-    
+
     let greeting = '';
-    
+
     if (totalTasks === 0) {
         greeting = `¡Hola! Tu lista de tareas está vacía. ¿Qué te gustaría lograr hoy?`;
     } else {
         greeting = `¡Excelente! Tienes <strong>${totalTasks} tareas</strong> en total, con una tasa de completado del <strong>${completionRate}%</strong>.<br><br>`;
-        
+
         if (pomodoroGoal > 0) {
             greeting += `Hasta ahora has completado <strong>${pomodoroCompleted}/${pomodoroGoal} pomodoros</strong> (${pomodoroProgress}%).<br><br>`;
         }
-        
+
         greeting += `Aquí tienes mis sugerencias para mejorar tu productividad hoy:`;
     }
-    
+
     return greeting;
 }
 
@@ -5335,7 +5463,7 @@ function generateAssistantResponse(message) {
     const completedTasks = tasks.filter(t => t.completed).length;
     const pendingTasks = totalTasks - completedTasks;
     const streak = calculateStreak(habits);
-    
+
     // Task-related responses
     if (lowerMessage.includes('tarea') || lowerMessage.includes('task')) {
         if (lowerMessage.includes('priorizar') || lowerMessage.includes('orden')) {
@@ -5348,11 +5476,11 @@ function generateAssistantResponse(message) {
             }
             return `Tienes <strong>${pendingTasks} tareas pendientes</strong>. Te sugiero comenzar con las tareas más importantes primero. ¿Te gustaría que te ayude a ordenarlas?`;
         }
-        
+
         if (lowerMessage.includes('crear') || lowerMessage.includes('agregar')) {
             return 'Puedes agregar una nueva tarea haciendo clic en "Nueva Tarea" o usando el botón "+" en el Dashboard. ¿Qué tipo de tarea necesitas agregar?';
         }
-        
+
         if (lowerMessage.includes('completar') || lowerMessage.includes('terminar')) {
             if (completedTasks > 0) {
                 return `¡Felicitaciones! Ya completaste <strong>${completedTasks} tareas</strong> hoy. Mantén este ritmo, es genial. ¿Te gustaría hacer una pausa o seguir trabajando?`;
@@ -5360,7 +5488,7 @@ function generateAssistantResponse(message) {
             return `Todavía no has completado tareas hoy. Empieza con una tarea pequeña y simple para ganarte confianza. ¿Qué te gustaría completar primero?`;
         }
     }
-    
+
     // Habit-related responses
     if (lowerMessage.includes('hábito') || lowerMessage.includes('habit')) {
         if (streak > 0) {
@@ -5368,7 +5496,7 @@ function generateAssistantResponse(message) {
         }
         return `Tienes ${habits.length} hábitos en tu lista. Los hábitos son clave para la productividad. ¿Quieres que te ayude a priorizar los más importantes?`;
     }
-    
+
     // Pomodoro-related responses
     if (lowerMessage.includes('pomodoro') || lowerMessage.includes('focus')) {
         if (pomodoroGoal > 0) {
@@ -5380,16 +5508,16 @@ function generateAssistantResponse(message) {
         }
         return 'Puedes configurar tu meta diaria en la configuración. ¿Te gustaría saber más sobre el Pomodoro technique?';
     }
-    
+
     // Energy-related responses
     if (lowerMessage.includes('energía') || lowerMessage.includes('energia') || lowerMessage.includes('energ')) {
         return 'La energía es clave para la productividad. Te sugiero agendar tus tareas cuando tengas más energía (generalmente por la mañana). ¿Quieres que te ayude a organizar tu día según tus energías?';
     }
-    
+
     // General suggestions
     if (lowerMessage.includes('sugerir') || lowerMessage.includes('recomendar') || lowerMessage.includes('ayudar')) {
         const suggestions = [];
-        
+
         if (pendingTasks > 5) {
             suggestions.push('Prioriza tus tareas más importantes primero');
         }
@@ -5402,22 +5530,22 @@ function generateAssistantResponse(message) {
         if (pomodoroGoal > 0 && pomodoroCompleted < pomodoroGoal) {
             suggestions.push(`Sigue tu meta de ${pomodoroGoal} pomodoros diarios`);
         }
-        
+
         if (suggestions.length > 0) {
             return 'Aquí tienes mis sugerencias para mejorar hoy:<br><br>' + suggestions.map(s => `• ${s}`).join('<br>');
         }
         return '¡Todo va muy bien! Mantén el ritmo y ¡sigue progresando! 🚀';
     }
-    
+
     // Greeting and closing
     if (lowerMessage.includes('hola') || lowerMessage.includes('buenos')) {
         return '¡Hola! 🌟 Estoy aquí para ayudarte a mejorar tu productividad. Puedo darte sugerencias sobre tus tareas, hábitos, Pomodoros o ayudarte a organizar tu día. ¿Qué te gustaría saber?';
     }
-    
+
     if (lowerMessage.includes('adios') || lowerMessage.includes('bye') || lowerMessage.includes('chau')) {
         return '¡Hasta luego! 🎉 ¡Sigue avanzando hacia tus metas! Si necesitas ayuda más tarde, estaré aquí.';
     }
-    
+
     return 'Entiendo tu consulta. Basándome en tus datos, te sugiero:<br><br>• Priorizar tus tareas más importantes<br>• Establecer metas claras para el día<br>• Hacer pausas regulares para mantener tu energía<br><br>¿Te gustaría que te ayude con algo específico?';
 }
 
@@ -5433,53 +5561,202 @@ function closePlanModal(e) {
     document.getElementById('planOverlay').classList.remove('active');
 }
 
-function generateWeeklyPlan() {
+async function generateWeeklyPlan() {
     const objective = document.getElementById('planObjective').value;
     const pomodoroGoal = parseInt(document.getElementById('planPomodoroGoal').value) || 4;
     const habitDays = parseInt(document.getElementById('planHabitDays').value) || 5;
     const priority = document.getElementById('planPriority').value;
+
+    // Get user data
+    const pendingTasks = tasks.filter(t => !t.completed).slice(0, 10);
+    const kanbanPending = kanbanTasks.filter(t => t.status !== 'done');
+    const habitList = habits.map(h => h.name || h.title);
+
+    const btn = document.querySelector('#planGeneratorForm button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '🤔 Generando plan con IA...';
+    btn.disabled = true;
+
+    try {
+        // Prepare prompt for AI
+        const userTasksText = pendingTasks.length > 0
+            ? pendingTasks.map(t => `- ${t.title} (prioridad: ${t.priority})`).join('\n')
+            : 'No hay tareas pendientes';
+
+        const habitsText = habitList.length > 0
+            ? habitList.join(', ')
+            : 'No hay hábitos configurados';
+
+        const objectiveLabels = {
+            'balance': 'Balance entre trabajo y vida personal',
+            'deepwork': 'Foco profundo en proyectos grandes',
+            'habits': 'Completar todos los hábitos',
+            'tasks': 'Maximizar cantidad de tareas',
+            'learning': 'Aprender y desarrollarse'
+        };
+
+        const prompt = `Eres un asistente de productividad experto. Genera un plan semanal optimizado para alguien con:
+
+**Objetivo:** ${objectiveLabels[objective]}
+**Pomodoros diarios objetivo:** ${pomodoroGoal}
+**Días mínimos de hábitos:** ${habitDays}
+**Prioridad de tareas:** ${priority}
+
+**Tareas pendientes:**
+${userTasksText}
+
+**Hábitos configurados:**
+${habitsText}
+
+Genera un plan semanal estructurado en español. Para cada día (Lunes a Domingo) incluye:
+1. Número de pomodoros recomendados
+2. Distribución de hábitos
+3. Tareas recomendadas del día
+4. Una sugerencia de time blocking
+
+Usa este formato exacto:
+<div class="plan-day">
+<h4>📅 [DÍA]</h4>
+<div style="display:flex;gap:8px;margin:8px 0;">
+<span style="background:rgba(34,197,94,0.1);color:#22C55E;padding:4px 12px;border-radius:12px;font-size:0.85rem;">🎯 [X] pomodoros</span>
+<span style="background:rgba(139,92,246,0.1);color:#8B5CF6;padding:4px 12px;border-radius:12px;font-size:0.85rem;">✓ [X] hábitos</span>
+</div>
+<ul style="margin:8px 0;padding-left:20px;">
+<li>[Tarea 1]</li>
+<li>[Tarea 2]</li>
+</ul>
+<div style="background:var(--bg);padding:12px;border-radius:12px;margin:8px 0;font-size:0.85rem;">
+<strong>⏰ Time Blocking:</strong> [Sugerencia breve]
+</div>
+</div>
+
+Devuelve solo el HTML, sin introducción ni conclusión.`;
+
+        // Call AI API
+        const response = await callAIAPI(prompt);
+
+        // Display the plan
+        const previewEl = document.getElementById('planPreview');
+        const resultEl = document.getElementById('planResult');
+
+        resultEl.innerHTML = response;
+        previewEl.style.display = 'block';
+
+        showNotification('Plan semanal generado con IA ✨', 'success');
+
+    } catch (error) {
+        console.error('Error generating plan:', error);
+        // Fallback to local generation
+        const plan = generatePlanContent(objective, pomodoroGoal, habitDays, priority);
+        const previewEl = document.getElementById('planPreview');
+        const resultEl = document.getElementById('planResult');
+        resultEl.innerHTML = plan;
+        previewEl.style.display = 'block';
+
+        showNotification('Generando plan local (IA no disponible)...', 'warning');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function callAIAPI(prompt) {
+    // Intentar primero con el proxy de Vercel
+    const API_PROXY_URL = '/api/ai-proxy';
     
-    // Generate plan based on objective and data
-    const plan = generatePlanContent(objective, pomodoroGoal, habitDays, priority);
+    try {
+        const response = await fetch(API_PROXY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+    } catch (e) {
+        console.log('Proxy Vercel no disponible');
+    }
     
-    // Display the plan
-    const previewEl = document.getElementById('planPreview');
-    const resultEl = document.getElementById('planResult');
+    // Fallback: Usar proxy CORS gratuito
+    const CORS_PROXIES = [
+        'https://api.codetabs.com/v1/proxy?quest=',
+    ];
     
-    resultEl.innerHTML = plan;
-    previewEl.style.display = 'block';
+    const API_KEY = '3ff2afbd29d744398f4d8d1a60ee4da0.oZqpGo1i6pXCMNQ2';
+    const API_URL = 'https://api.z.ai/v1/chat/completions';
     
-    showNotification('Plan semanal generado correctamente', 'success');
+    const requestBody = JSON.stringify({
+        model: 'glm-4',
+        messages: [
+            {
+                role: 'system',
+                content: 'Eres un asistente de productividad especializado en gestión del tiempo, hábitos y productividad personal. Genera respuestas en español, estructuradas y prácticas.'
+            },
+            {
+                role: 'user',
+                content: prompt
+            }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+    });
+    
+    for (const proxy of CORS_PROXIES) {
+        try {
+            const url = proxy + encodeURIComponent(API_URL);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: requestBody
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.choices[0].message.content;
+            }
+        } catch (e) {
+            console.log(`Proxy ${proxy} falló`);
+        }
+    }
+    
+    throw new Error('Todos los proxies fallaron');
 }
 
 function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
     const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const today = new Date();
-    
+
     let tasks = [];
-    
+
     // Get user tasks by priority
     if (priority === 'high') {
         tasks = tasks.filter(t => t.priority === 'alta');
     } else if (priority === 'low') {
         tasks = tasks.filter(t => t.priority === 'baja');
     }
-    
+
     // If not enough tasks, include completed ones
     if (tasks.length < 3) {
         const additional = tasks.filter(t => t.priority === 'media');
         tasks = [...tasks, ...additional].slice(0, 3);
     }
-    
+
     // Build day plans
     const dayPlans = days.map((day, index) => {
         const isWorkDay = index < 5; // Monday-Friday
         const pomodorosPerDay = isWorkDay ? pomodoroGoal : Math.max(1, Math.floor(pomodoroGoal / 2));
         const completedHabits = isWorkDay ? habitDays : 0;
-        
+
         // Generate tasks for the day
         const dayTasks = tasks.slice(index * 2, (index * 2) + 2);
-        
+
         let html = `
             <div class="plan-day">
                 <div class="plan-day-header">
@@ -5497,7 +5774,7 @@ function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
                 </div>
                 <ul class="plan-tasks">
         `;
-        
+
         if (dayTasks.length > 0) {
             dayTasks.forEach(task => {
                 html += `<li>${escapeHtml(task.title)} ${task.date ? `(${task.date})` : ''}</li>`;
@@ -5505,9 +5782,9 @@ function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
         } else {
             html += `<li>Organiza tus tareas más importantes</li>`;
         }
-        
+
         html += `</ul>`;
-        
+
         // Add time blocking suggestion
         if (isWorkDay) {
             html += `
@@ -5517,14 +5794,14 @@ function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
                 </div>
             `;
         }
-        
+
         html += `</div>`;
         return html;
     });
-    
+
     // Generate overall suggestions
     let suggestions = '';
-    
+
     if (objective === 'deepwork') {
         suggestions = `
             <div class="plan-suggestion">
@@ -5547,7 +5824,7 @@ function generatePlanContent(objective, pomodoroGoal, habitDays, priority) {
             </div>
         `;
     }
-    
+
     return `
         <div class="plan-days">
             ${dayPlans.join('')}

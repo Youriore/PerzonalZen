@@ -155,30 +155,6 @@
         </button>
       </div>
     </header>
-
-    <!-- Bottom Navigation (Mobile Only) -->
-    <nav class="bottom-nav d-md-none">
-      <a href="#" class="bottom-nav-item active" onclick="switchView('dashboard')">
-        <span class="material-icons">dashboard</span>
-        <span class="label">Dashboard</span>
-      </a>
-      <a href="#" class="bottom-nav-item" onclick="switchView('calendar')">
-        <span class="material-icons">calendar_today</span>
-        <span class="label">Calendario</span>
-      </a>
-      <a href="#" class="bottom-nav-item" onclick="switchView('schedule')">
-        <span class="material-icons">schedule</span>
-        <span class="label">Horario</span>
-      </a>
-      <a href="#" class="bottom-nav-item" onclick="switchView('habits')">
-        <span class="material-icons">check_circle</span>
-        <span class="label">Hábitos</span>
-      </a>
-      <a href="#" class="bottom-nav-item" onclick="openSettingsModal()">
-        <span class="material-icons">settings</span>
-        <span class="label">Ajustes</span>
-      </a>
-    </nav>
   </div>
 
   <!-- Main Content Area -->
@@ -219,6 +195,22 @@
           <p class="text-muted">Aquí tienes un resumen de tu día.</p>
         </div>
         <div class="date-display" id="header-date"></div>
+      </div>
+
+      <!-- Today's Tasks Section -->
+      <div class="card today-tasks-card mb-4">
+        <div class="card-header">
+          <div class="card-title"><span>📋</span> Tareas de Hoy</div>
+          <span class="today-date" id="todayDate"></span>
+        </div>
+        <div class="card-body">
+          <div id="todayTasksList" class="today-tasks-list">
+            <div class="today-tasks-empty">
+              <span class="material-icons">check_circle</span>
+              <p>¡No hay tareas pendientes para hoy! 🎉</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Kanban Board -->
@@ -899,7 +891,7 @@
       <div class="modal-body" style="padding: 0;">
         <div class="plan-content">
           <!-- Plan Generator Form -->
-          <div class="plan-generator-form">
+          <div class="plan-generator-form" id="planGeneratorForm">
             <h3>🎯 Configurar Objetivos Semanales</h3>
 
             <div class="form-group">
