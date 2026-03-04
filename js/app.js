@@ -3635,6 +3635,13 @@ function setBreakDuration(minutes) {
 let energyLogs = [];
 
 function loadStats() {
+    // Generate sample data if there's no data at all
+    const hasAnyData = tasks.length > 0 || kanbanTasks.length > 0 || completedTasksHistory.length > 0 || habits.length > 0;
+
+    if (!hasAnyData) {
+        generateSampleData();
+    }
+
     const totalTasks = tasks.length + kanbanTasks.length + completedTasksHistory.length;
     const completedTasks = tasks.filter(t => t.completed).length + kanbanTasks.filter(t => t.status === 'done').length + completedTasksHistory.length;
     const pendingTasks = tasks.filter(t => !t.completed).length + kanbanTasks.filter(t => t.status === 'pending').length;
@@ -3735,6 +3742,91 @@ function loadStats() {
     renderRecentTasksChart();
     renderHabitsTrendChart();
     renderPriorityChart();
+}
+function generateSampleData() {
+    // Sample tasks
+    tasks = [
+        { id: 1, title: 'Completar informe mensual', description: 'Informes del proyecto principal', priority: 'alta', completed: true, completedAt: new Date().toISOString() },
+        { id: 2, title: 'Revisar código frontend', description: 'Optimizar rendimiento', priority: 'alta', completed: true, completedAt: new Date(Date.now() - 86400000).toISOString() },
+        { id: 3, title: 'Sesión de Pomodoro de estudio', description: 'Aprender React nuevo', priority: 'media', completed: false, createdAt: new Date().toISOString() },
+        { id: 4, title: 'Limpiar área de trabajo', description: 'Organizar escritorio', priority: 'baja', completed: false, createdAt: new Date().toISOString() },
+        { id: 5, title: 'Actualizar documentación', description: 'Documentar nuevas funciones', priority: 'media', completed: true, completedAt: new Date(Date.now() - 172800000).toISOString() }
+    ];
+
+    // Sample kanban tasks
+    kanbanTasks = [
+        { id: 101, title: 'Diseñar nueva página', description: 'Landing page para producto', priority: 'alta', status: 'done', time: 120, createdAt: new Date(Date.now() - 259200000).toISOString() },
+        { id: 102, title: 'Implementar API de usuario', description: 'Endpoints de autenticación', priority: 'alta', status: 'progress', time: 180, createdAt: new Date().toISOString() },
+        { id: 103, title: 'Optimizar base de datos', description: 'Queries lentas', priority: 'media', status: 'progress', time: 240, createdAt: new Date().toISOString() },
+        { id: 104, title: 'Crear pruebas unitarias', description: 'Cobertura > 80%', priority: 'media', status: 'pending', time: 90, createdAt: new Date().toISOString() },
+        { id: 105, title: 'Mantener servidor', description: 'Actualizaciones de seguridad', priority: 'baja', status: 'pending', time: 60, createdAt: new Date().toISOString() },
+        { id: 106, title: 'Revisar pull requests', description: 'Code review de equipo', priority: 'media', status: 'pending', time: 120, createdAt: new Date().toISOString() },
+        { id: 107, title: 'Diseñar interfaz móvil', description: 'Responsive design', priority: 'alta', status: 'pending', time: 150, createdAt: new Date().toISOString() }
+    ];
+
+    // Sample completed tasks history
+    completedTasksHistory = [
+        { id: 201, title: 'Reunión con equipo', description: 'Sprint planning', priority: 'alta', completedAt: new Date(Date.now() - 43200000).toISOString(), type: 'trabajo' },
+        { id: 202, title: 'Ejercicio cardiovascular', description: '30 minutos corriendo', priority: 'media', completedAt: new Date(Date.now() - 43200000).toISOString(), type: 'habito' },
+        { id: 203, title: 'Leer documentación', description: 'API de terceros', priority: 'baja', completedAt: new Date(Date.now() - 43200000).toISOString(), type: 'estudio' },
+        { id: 204, title: 'Codificar feature X', description: 'Implementación solicitada', priority: 'alta', completedAt: new Date(Date.now() - 86400000).toISOString(), type: 'trabajo' },
+        { id: 205, title: 'Revisar emails', description: 'Respuesta prioritaria', priority: 'media', completedAt: new Date(Date.now() - 86400000).toISOString(), type: 'trabajo' },
+        { id: 206, title: 'Meditación', description: 'Mindfulness 10 minutos', priority: 'baja', completedAt: new Date(Date.now() - 86400000).toISOString(), type: 'habito' },
+        { id: 207, title: 'Comprar provisiones', description: 'Supermercado semanal', priority: 'media', completedAt: new Date(Date.now() - 172800000).toISOString(), type: 'personal' },
+        { id: 208, title: 'Crear prototipo', description: 'Wireframes app móvil', priority: 'alta', completedAt: new Date(Date.now() - 172800000).toISOString(), type: 'trabajo' },
+        { id: 209, title: 'Tarea técnica', description: 'Resolución de bug', priority: 'alta', completedAt: new Date(Date.now() - 259200000).toISOString(), type: 'trabajo' },
+        { id: 210, title: 'Hábito de lectura', description: 'Capítulo 3 libro', priority: 'media', completedAt: new Date(Date.now() - 259200000).toISOString(), type: 'habito' }
+    ];
+
+    // Sample habits
+    habits = [
+        { id: 301, title: 'Beber agua', description: '8 vasos al día', completedDates: generateDates(10), color: '#3B82F6' },
+        { id: 302, title: 'Ejercicio', description: '30 minutos diarios', completedDates: generateDates(7), color: '#10B981' },
+        { id: 303, title: 'Leer', description: '20 páginas diarias', completedDates: generateDates(8), color: '#8B5CF6' },
+        { id: 304, title: 'Dormir temprano', description: 'Antes de las 11 PM', completedDates: generateDates(5), color: '#F59E0B' },
+        { id: 305, title: 'Meditar', description: '10 minutos cada mañana', completedDates: generateDates(7), color: '#EC4899' },
+        { id: 306, title: 'Mantener código limpio', description: 'Clean Code practices', completedDates: generateDates(6), color: '#6366F1' }
+    ];
+
+    // Sample pomodoro stats (last 7 days)
+    const pomodoroStats = {};
+    const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const pomodoroData = [3, 5, 4, 6, 2, 4, 3];
+    days.forEach((day, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - index));
+        const dateStr = date.toDateString();
+        pomodoroStats[dateStr] = { completed: pomodoroData[index], breaks: Math.floor(Math.random() * 3) + 1 };
+    });
+    localStorage.setItem('pomodoroStats', JSON.stringify(pomodoroStats));
+
+    // Sample energy logs
+    energyLogs = [];
+    for (let i = 0; i < 30; i++) {
+        const hour = Math.floor(Math.random() * 24);
+        energyLogs.push({
+            level: Math.floor(Math.random() * 5) + 1,
+            hour: hour,
+            timestamp: new Date(Date.now() - i * 86400000).toISOString()
+        });
+    }
+    localStorage.setItem('energyLogs', JSON.stringify(energyLogs));
+
+    // Update localStorage
+    localStorage.setItem('zenTasks', JSON.stringify(tasks));
+    localStorage.setItem('zenKanban', JSON.stringify(kanbanTasks));
+    localStorage.setItem('zenHabits', JSON.stringify(habits));
+    localStorage.setItem('zenCompletedHistory', JSON.stringify(completedTasksHistory));
+}
+
+function generateDates(daysAgo) {
+    const dates = [];
+    for (let i = daysAgo - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        dates.push(date.toISOString().split('T')[0]);
+    }
+    return dates;
 }
 
 // Chart instances
