@@ -1,10 +1,11 @@
-<!doctype html>
+ <!doctype html>
 <html lang="es">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zen Tasks - Gestión Completa</title>
+  <link rel="skip" href="#main-content" title="Saltar al contenido principal" />
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>" />
     <link
@@ -17,10 +18,11 @@
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-</head>
+   </head>
 
-<body>
-  <div class="app-container">
+  <body>
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    <div class="app-container">
     <!-- Sidebar (Desktop - Fixed Position) -->
     <nav id="sidebar" class="sidebar">
       <div class="sidebar-header logo-container p-3">
@@ -145,8 +147,8 @@
     </header>
   </div>
 
-  <!-- Main Content Area -->
-  <main class="main-content">
+   <!-- Main Content Area -->
+  <main class="main-content" id="main-content">
     <div class="page-shell">
       <!-- Mobile Header (Simplified) -->
       <div id="mobile-header"
@@ -205,9 +207,9 @@
       <div class="card kanban-card">
         <div class="card-header">
           <div class="card-title">Tablero Kanban</div>
-          <div class="kanban-controls">
-            <div class="search-box">
-              <input type="text" placeholder="Buscar tareas..." id="kanbanSearch" oninput="filterKanban(this.value)" />
+           <div class="kanban-controls">
+             <div class="search-box">
+              <input type="text" placeholder="Buscar tareas..." id="kanbanSearch" oninput="filterKanban(this.value)" aria-label="Buscar tareas" role="search" />
             </div>
             <button class="btn-secondary" onclick="clearKanbanSearch()">
               Limpiar
@@ -295,9 +297,9 @@
         <div class="card tasks-card">
           <div class="card-header">
             <div class="card-title"><span>◑</span> Mis Tareas</div>
-            <div style="display: flex; gap: 8px">
-              <div class="search-box">
-                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)" />
+             <div style="display: flex; gap: 8px">
+               <div class="search-box">
+                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)" aria-label="Buscar tareas" role="search" />
               </div>
             </div>
           </div>
@@ -967,16 +969,16 @@
               <div class="setting-item">
                 <div class="setting-label">🌅 Hora de inicio</div>
                 <div class="setting-description">
-                  Hora início de tu jornada laboral
-                </div>
-                <input type="time" id="tbStartTime" class="form-input" value="09:00" style="width: 150px" />
+                   Hora início de tu jornada laboral
+                 </div>
+                <input type="time" id="tbStartTime" class="form-input" value="09:00" style="width: 150px" aria-label="Hora de inicio" />
               </div>
               <div class="setting-item">
                 <div class="setting-label">🌙 Hora de fin</div>
                 <div class="setting-description">
                   Hora fin de tu jornada laboral
                 </div>
-                <input type="time" id="tbEndTime" class="form-input" value="18:00" style="width: 150px" />
+                <input type="time" id="tbEndTime" class="form-input" value="18:00" style="width: 150px" aria-label="Hora de fin" />
               </div>
               <button class="btn-primary" onclick="saveTimeBlockingSettings()" style="margin-top: 16px">
                 Guardar
@@ -1002,9 +1004,9 @@
               <div class="setting-item">
                 <div class="setting-label">📥 Importar Datos</div>
                 <div class="setting-description">
-                  Restaura tus datos desde un archivo JSON
-                </div>
-                <input type="file" id="import-file" accept=".json" style="display: none" onchange="importData(this)" />
+                   Restaura tus datos desde un archivo JSON
+                 </div>
+                <input type="file" id="import-file" accept=".json" style="display: none" onchange="importData(this)" aria-label="Importar archivo JSON" />
                 <button class="btn-secondary" onclick="document.getElementById('import-file').click()">
                   📤 Importar JSON
                 </button>
@@ -1049,8 +1051,11 @@
   <!-- Mobile Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
-  <!-- Notification -->
+   <!-- Notification -->
   <div class="notification" id="notification"></div>
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <script src="js/app.js"></script>
   <script src="js/kanban-enhancements.js"></script>

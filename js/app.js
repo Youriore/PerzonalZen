@@ -4838,9 +4838,169 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notif.classList.remove('show'), 3500);
 }
 
+/**
+ * Toast Notification System
+ * @param {string} message - Message to display
+ * @param {string} type - Type of notification: success, error, warning, info
+ * @param {number} duration - Duration in milliseconds (default: 3000)
+ * @param {string} position - Position: top, bottom, center (default: bottom)
+ */
+function showToast(message, type = 'info', duration = 3000, position = 'bottom') {
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        console.error('Toast container not found');
+        return;
+    }
+
+    // Define icon and color based on type
+    const toastConfig = {
+        success: { icon: '✅', color: 'var(--success)', bgColor: 'rgba(16, 185, 129, 0.9)' },
+        error: { icon: '❌', color: 'var(--danger)', bgColor: 'rgba(239, 68, 68, 0.9)' },
+        warning: { icon: '⚠️', color: 'var(--warning)', bgColor: 'rgba(245, 158, 11, 0.9)' },
+        info: { icon: 'ℹ️', color: 'var(--accent)', bgColor: 'rgba(14, 165, 233, 0.9)' }
+    };
+
+    const config = toastConfig[type] || toastConfig.info;
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.innerHTML = `
+        <span class="toast-icon">${config.icon}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" aria-label="Cerrar" onclick="this.parentElement.remove()">
+            <span class="material-icons">close</span>
+        </button>
+    `;
+
+    // Add toast to container based on position
+    if (position === 'top') {
+        container.insertBefore(toast, container.firstChild);
+    } else {
+        container.appendChild(toast);
+    }
+
+    // Auto-remove after duration
+    setTimeout(() => {
+        toast.classList.add('hide');
+        toast.addEventListener('transitionend', () => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        });
+    }, duration);
+
+    // Show toast with animation
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+}
+
+/**
+ * Create a confirmation dialog with custom styling
+ * @param {string} title - Dialog title
+ * @param {string} message - Dialog message
+ * @param {function} onConfirm - Callback when confirmed
+ * @param {function} onCancel - Callback when cancelled
+ */
+function showConfirm(title, message, onConfirm, onCancel) {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay confirm-modal-overlay';
+    overlay.innerHTML = `
+        <div class="zen-modal confirm-modal">
+            <div class="modal-header">
+                <div class="modal-title">${title}</div>
+                <button class="modal-close" onclick="closeConfirmModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>${message}</p>
+                <div class="confirm-actions">
+                    <button class="btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+                    <button class="btn-primary confirm-btn">${onConfirm ? 'Confirmar' : 'OK'}</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Add event listeners
+    const confirmBtn = overlay.querySelector('.confirm-btn');
+    const closeBtn = overlay.querySelector('.modal-close');
+
+    if (onConfirm) {
+        confirmBtn.onclick = () => {
+            onConfirm();
+            closeConfirmModal();
+        };
+    }
+
+    closeBtn.onclick = closeConfirmModal;
+
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            closeConfirmModal();
+        }
+    };
+}
+
+function closeConfirmModal() {
+    const overlay = document.querySelector('.confirm-modal-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 300);
+    }
+}
+
+/**
+ * Loading State Manager
+ * @param {string} elementId - ID of element to show loading in
+ * @param {boolean} isLoading - Whether to show or hide loading
+ */
+function setLoadingState(elementId, isLoading = true) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.error(`Element with id "${elementId}" not found`);
+        return;
+    }
+
+    if (isLoading) {
+        element.dataset.originalContent = element.innerHTML;
+        element.innerHTML = `
+            <div class="loading-wrapper">
+                <div class="spinner"></div>
+                <p class="loading-text">Cargando...</p>
+            </div>
+        `;
+        element.classList.add('loading');
+    } else {
+        if (element.dataset.originalContent) {
+            element.innerHTML = element.dataset.originalContent;
+        }
+        element.classList.remove('loading');
+    }
+}
+
+/**
+ * Get element by ID with fallback to null
+ * @param {string} id - Element ID
+ * @returns {HTMLElement|null} Element or null
+ */
+function getElementById(id) {
+    return document.getElementById(id) || null;
+}
+
 /* Settings Modal Logic */
 function openSettingsModal() {
-    document.getElementById('settingsOverlay').classList.add('active');
+    const settingsOverlay = document.getElementById('settingsModalOverlay');
+    if (!settingsOverlay) {
+        console.error('Settings modal not found');
+        return;
+    }
+    settingsOverlay.classList.add('active');
 
     // Load current settings state
     const notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
@@ -4857,7 +5017,10 @@ function openSettingsModal() {
 
 function closeSettingsModal(e) {
     if (e && e.target !== e.currentTarget) return;
-    document.getElementById('settingsOverlay').classList.remove('active');
+    const settingsOverlay = document.getElementById('settingsModalOverlay');
+    if (settingsOverlay) {
+        settingsOverlay.classList.remove('active');
+    }
 }
 
 function switchSettingsTab(tabId, element) {
