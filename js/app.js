@@ -3640,6 +3640,8 @@ function loadStats() {
 
     if (!hasAnyData) {
         generateSampleData();
+        // Save the sample data to localStorage
+        saveData();
     }
 
     const totalTasks = tasks.length + kanbanTasks.length + completedTasksHistory.length;
@@ -3742,6 +3744,9 @@ function loadStats() {
     renderRecentTasksChart();
     renderHabitsTrendChart();
     renderPriorityChart();
+    renderProductivityByHourChart();
+    renderParetoChart();
+    renderBubbleChart();
 }
 function generateSampleData() {
     // Sample tasks
@@ -3835,6 +3840,9 @@ let weeklyProductivityChart = null;
 let recentTasksChart = null;
 let habitsTrendChart = null;
 let priorityChart = null;
+let productivityByHourChart = null;
+let paretoChart = null;
+let bubbleChart = null;
 let statsPeriod = 'week';
 
 function setStatsPeriod(period, btn) {
@@ -3940,14 +3948,34 @@ function renderRecentTasksChart() {
         recentTasksChart.destroy();
     }
 
-    // Get recent tasks (last 10) including history
-    const recentTasks = [...tasks, ...kanbanTasks, ...completedTasksHistory]
-        .sort((a, b) => (b.completedAt || b.id) - (a.completedAt || a.id))
-        .slice(0, 10)
-        .reverse();
+    // Get all tasks with their completion dates
+    let allTasks = [
+        ...tasks.map(t => ({ ...t, completedDate: t.completedAt || t.createdAt || new Date().toISOString(), isDone: t.completed })),
+        ...kanbanTasks.map(t => ({ ...t, completedDate: t.completedAt || t.createdAt || new Date().toISOString(), isDone: t.status === 'done' })),
+        ...completedTasksHistory.map(t => ({ ...t, completedDate: t.completedAt || new Date().toISOString(), isDone: true }))
+    ];
 
-    const labels = recentTasks.map(t => t.title ? (t.title.substring(0, 15) + (t.title.length > 15 ? '...' : '')) : 'Tarea');
-    const data = recentTasks.map(t => t.completed || t.status === 'done' || t.archived ? 1 : 0);
+    // Sort by date (newest first)
+    allTasks = allTasks
+        .sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate))
+        .slice(0, 10);
+
+    // If no data, use sample data
+    if (allTasks.length === 0) {
+        allTasks = [
+            { title: 'Tarea ejemplo 1', isDone: true, completedDate: new Date().toISOString() },
+            { title: 'Tarea ejemplo 2', isDone: true, completedDate: new Date(Date.now() - 86400000).toISOString() },
+            { title: 'Tarea ejemplo 3', isDone: false, completedDate: new Date(Date.now() - 172800000).toISOString() },
+            { title: 'Tarea ejemplo 4', isDone: true, completedDate: new Date(Date.now() - 259200000).toISOString() },
+            { title: 'Tarea ejemplo 5', isDone: false, completedDate: new Date(Date.now() - 345600000).toISOString() },
+            { title: 'Tarea ejemplo 6', isDone: true, completedDate: new Date(Date.now() - 432000000).toISOString() },
+            { title: 'Tarea ejemplo 7', isDone: false, completedDate: new Date(Date.now() - 518400000).toISOString() },
+            { title: 'Tarea ejemplo 8', isDone: true, completedDate: new Date(Date.now() - 604800000).toISOString() }
+        ];
+    }
+
+    const labels = allTasks.map(t => t.title ? (t.title.substring(0, 15) + (t.title.length > 15 ? '...' : '')) : 'Tarea');
+    const data = allTasks.map(t => t.isDone ? 1 : 0);
 
     recentTasksChart = new Chart(ctx, {
         type: 'bar',
@@ -4082,6 +4110,284 @@ function renderPriorityChart() {
             }
         }
     });
+}
+
+function renderProductivityByHourChart() {
+    const ctx = document.getElementById('productivityByHourChart');
+    if (!ctx) return;
+
+    if (productivityByHourChart) {
+        productivityByHourChart.destroy();
+    }
+
+    // Calcular productividad por hora del día
+    const hourlyData = new Array(24).fill(0);
+    const completedTasksAll = [...tasks.filter(t => t.completed), ...kanbanTasks.filter(t => t.status === 'done'), ...completedTasksHistory];
+    
+    completedTasksAll.forEach(task => {
+        if (task.completedAt) {
+            const hour = new Date(task.completedAt).getHours();
+            hourlyData[hour]++;
+        }
+    });
+
+    const labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+
+    productivityByHourChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Tareas completadas',
+                data: hourlyData,
+                backgroundColor: hourlyData.map(v => v > 0 ? '#10B981' : '#E2E8F0'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderParetoChart() {
+    const ctx = document.getElementById('paretoChart');
+    if (!ctx) return;
+
+    if (paretoChart) {
+        paretoChart.destroy();
+    }
+
+    // Obtener tareas por tipo/categoría
+    const typeCount = {};
+    const allTasks = [...tasks, ...kanbanTasks, ...completedTasksHistory];
+    
+    allTasks.forEach(task => {
+        const type = task.type || task.tags?.[0] || 'General';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+    });
+
+    const sortedTypes = Object.entries(typeCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+    const labels = sortedTypes.map(([type]) => type);
+    const data = sortedTypes.map(([, count]) => count);
+    const total = data.reduce((sum, v) => sum + v, 0);
+    const cumulative = data.reduce((acc, val, i) => {
+        const prev = i > 0 ? acc[i-1] : 0;
+        acc.push(prev + val);
+        return acc;
+    }, []).map(v => (v / total) * 100);
+
+    paretoChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Tareas',
+                    data: data,
+                    backgroundColor: '#6366F1',
+                    borderRadius: 4,
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'line',
+                    label: 'Acumulado %',
+                    data: cumulative,
+                    borderColor: '#F59E0B',
+                    backgroundColor: '#F59E0B',
+                    tension: 0.3,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    type: 'linear',
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Cantidad'
+                    }
+                },
+                y1: {
+                    beginAtZero: true,
+                    max: 100,
+                    type: 'linear',
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Porcentaje'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderBubbleChart() {
+    const ctx = document.getElementById('bubbleChart');
+    if (!ctx) return;
+
+    if (bubbleChart) {
+        bubbleChart.destroy();
+    }
+
+    // Crear datos de burbujas: tiempo vs prioridad
+    const allTasksWithTime = [...kanbanTasks.filter(t => t.time)];
+    
+    const bubbleData = allTasksWithTime.map(task => {
+        const priorityMultiplier = task.priority === 'alta' ? 3 : task.priority === 'media' ? 2 : 1;
+        return {
+            x: task.time || 30,
+            y: priorityMultiplier,
+            r: Math.max(5, Math.min(25, (task.time || 30) / 10)),
+            title: task.title
+        };
+    });
+
+    // Si no hay datos, mostrar datos de ejemplo
+    if (bubbleData.length === 0) {
+        bubbleData.push(
+            { x: 30, y: 3, r: 8, title: 'Tarea ejemplo 1' },
+            { x: 60, y: 2, r: 12, title: 'Tarea ejemplo 2' },
+            { x: 45, y: 1, r: 10, title: 'Tarea ejemplo 3' },
+            { x: 120, y: 3, r: 18, title: 'Tarea ejemplo 4' },
+            { x: 90, y: 2, r: 15, title: 'Tarea ejemplo 5' }
+        );
+    }
+
+    bubbleChart = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+            datasets: [{
+                label: 'Tareas',
+                data: bubbleData,
+                backgroundColor: bubbleData.map(b => 
+                    b.y >= 3 ? 'rgba(239, 68, 68, 0.6)' : 
+                    b.y >= 2 ? 'rgba(245, 158, 11, 0.6)' : 
+                    'rgba(16, 185, 129, 0.6)'
+                ),
+                borderColor: bubbleData.map(b => 
+                    b.y >= 3 ? '#EF4444' : 
+                    b.y >= 2 ? '#F59E0B' : 
+                    '#10B981'
+                ),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const item = context.raw;
+                            return `${item.title}: ${item.x}min, Prioridad: ${item.y >= 3 ? 'Alta' : item.y >= 2 ? 'Media' : 'Baja'}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tiempo (minutos)'
+                    },
+                    min: 0
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Prioridad'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value === 3 ? 'Alta' : value === 2 ? 'Media' : value === 1 ? 'Baja' : '';
+                        }
+                    },
+                    min: 0,
+                    max: 4
+                }
+            }
+        }
+    });
+}
+
+function refreshAllCharts() {
+    loadStats();
+    showNotification('Gráficos actualizados', 'success');
+}
+
+function exportAllCharts() {
+    const chartIds = [
+        'tasksByStatusChart',
+        'weeklyProductivityChart',
+        'habitsTrendChart',
+        'priorityChart',
+        'recentTasksChart',
+        'productivityByHourChart',
+        'paretoChart',
+        'bubbleChart'
+    ];
+    
+    let exportedCount = 0;
+    chartIds.forEach(chartId => {
+        if (exportChartToImage(chartId)) {
+            exportedCount++;
+        }
+    });
+    
+    showNotification(`${exportedCount} gráficos exportados`, 'success');
+}
+
+function exportChartToImage(chartId) {
+    const canvas = document.getElementById(chartId);
+    if (!canvas) {
+        console.warn(`Gráfico no encontrado: ${chartId}`);
+        return false;
+    }
+    
+    try {
+        const link = document.createElement('a');
+        link.download = `${chartId}-${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        return true;
+    } catch (e) {
+        console.error(`Error exportando ${chartId}:`, e);
+        return false;
+    }
 }
 
 function initEnergyManagement() {

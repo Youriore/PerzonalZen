@@ -166,6 +166,9 @@
             <button class="st-btn" onclick="toggleScreenTimePause()" title="Pausar/Reanudar">
               <span class="material-icons" id="pauseIconMobile">pause</span>
             </button>
+            <button class="st-btn" onclick="resetScreenTime()" title="Reiniciar">
+              <span class="material-icons">refresh</span>
+            </button>
           </div>
         </div>
       </div>
@@ -834,13 +837,6 @@
                   <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('bubbleChart')">📥 Exportar</button>
                 </div>
                 <canvas id="bubbleChart"></canvas>
-              </div>
-              <div class="chart-card">
-                <div class="chart-header">
-                  <h4>Distribución por Prioridad</h4>
-                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('priorityChart')">📥 Exportar</button>
-                </div>
-                <canvas id="priorityChart"></canvas>
               </div>
             </div>
           </div>
