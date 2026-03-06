@@ -304,6 +304,41 @@ body.dark .page-shell {
     .container {
         display: block;
     }
+    
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        width: 260px;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    }
+    
+    .sidebar.active {
+        left: 0;
+    }
+    
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 12px;
+    }
 }
 
 /* App Container */
@@ -6197,7 +6232,7 @@ body.dark .theme-toggle-header .material-icons {
 
         .page-shell {
             padding: 16px;
-            margin: 12px auto 20px;
+            margin: 72px auto 20px;
             border-radius: 20px;
         }
 

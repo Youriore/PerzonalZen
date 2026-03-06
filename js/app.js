@@ -577,6 +577,13 @@ const fullDayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vie
 
 // Toggle Sidebar
 function toggleSidebar() {
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        toggleMobileSidebar();
+        return;
+    }
+    
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
 
