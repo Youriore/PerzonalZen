@@ -700,6 +700,33 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || win
 // Variable para Wake Lock (mantener pantalla encendida)
 let wakeLock = null;
 
+// Initialize mobile view on load
+function initMobileView() {
+    const isMobile = window.innerWidth <= 768;
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const mobileHeader = document.getElementById('mobile-header');
+    
+    if (isMobile) {
+        // Ensure sidebar is hidden on mobile
+        if (sidebar) {
+            sidebar.classList.remove('active');
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.remove('active');
+        }
+        // Ensure mobile header is visible
+        if (mobileHeader) {
+            mobileHeader.style.display = 'flex';
+        }
+    }
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    initMobileView();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     loadScreenTime();
@@ -721,6 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupVoiceUI();
     requestNotificationPermission();
     loadCustomAudio();
+    initMobileView(); // Initialize mobile view
     const dateEl = document.getElementById('header-date');
     if (dateEl) {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
