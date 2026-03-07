@@ -1,4 +1,4 @@
- <!doctype html>
+<!doctype html>
 <html lang="es">
 
 <head>
@@ -9,6 +9,85 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#1E293B" />
   <title>Zen Tasks - Gestión Completa</title>
+  
+  <!-- CRITICAL MOBILE CSS - Inline to avoid caching issues -->
+  <style id="critical-mobile">
+    @media screen and (max-width: 768px) {
+      #sidebar {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      #sidebar.active {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 260px !important;
+        height: 100vh !important;
+        z-index: 10000 !important;
+      }
+      #mobile-header {
+        display: flex !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 100 !important;
+        background: #fff !important;
+      }
+      .main-content {
+        margin-left: 0 !important;
+        padding: 12px !important;
+        margin-top: 70px !important;
+      }
+      .app-header {
+        display: none !important;
+      }
+    }
+  </style>
+  
+  <!-- Force mobile layout immediately -->
+  <script>
+    (function() {
+      function initMobile() {
+        if (window.innerWidth <= 768) {
+          var sidebar = document.getElementById('sidebar');
+          var mobileHeader = document.getElementById('mobile-header');
+          var appHeader = document.querySelector('.app-header');
+          
+          if (sidebar) {
+            sidebar.style.display = 'none';
+            sidebar.style.visibility = 'hidden';
+          }
+          if (mobileHeader) {
+            mobileHeader.style.display = 'flex';
+            mobileHeader.style.visibility = 'visible';
+            mobileHeader.style.position = 'fixed';
+            mobileHeader.style.top = '0';
+            mobileHeader.style.left = '0';
+            mobileHeader.style.right = '0';
+            mobileHeader.style.zIndex = '100';
+          }
+          if (appHeader) {
+            appHeader.style.display = 'none';
+          }
+        }
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobile);
+      } else {
+        initMobile();
+      }
+      
+      window.addEventListener('resize', initMobile);
+    })();
+  </script>
+  
   <link rel="skip" href="#main-content" title="Saltar al contenido principal" />
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>" />
