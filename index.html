@@ -8,7 +8,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#1E293B" />
+  <meta name="format-detection" content="telephone=no" />
   <title>Zen Tasks - Gestión Completa</title>
+  
+  <!-- Force mobile styles immediately -->
+  <style id="mobile-override">
+    @media screen and (max-width: 768px) {
+      #sidebar { display: none !important; }
+      #mobile-header { display: flex !important; }
+      .page-shell { margin-top: 70px !important; }
+    }
+  </style>
+  
   <link rel="skip" href="#main-content" title="Saltar al contenido principal" />
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>" />
