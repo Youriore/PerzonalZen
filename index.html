@@ -10,6 +10,33 @@
   <meta name="theme-color" content="#1E293B" />
   <title>Zen Tasks - Gestión Completa</title>
 
+  <!-- CRITICAL MOBILE CSS - Inline -->
+  <style>
+    :root { --bg: #F8FAFC; --card: #FFFFFF; --text: #1E293B; --border: #E2E8F0; --accent: #0EA5E9; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    /* Mobile: Hide sidebar, show header */
+    @media screen and (max-width: 768px) {
+      #sidebar { display: none !important; }
+      #mobile-header { display: flex !important; position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--card); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+      .app-header { display: none !important; }
+      .main-content { margin-top: 60px !important; padding: 12px !important; }
+      .page-shell { margin: 12px; padding: 16px; }
+      .card { border-radius: 12px; margin-bottom: 12px; }
+      .btn { padding: 10px 16px; border-radius: 8px; }
+      input, select, textarea { padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+    }
+    
+    /* Desktop: Show sidebar */
+    @media screen and (min-width: 769px) {
+      #mobile-header { display: none !important; }
+      .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: var(--bg); border-right: 1px solid var(--border); }
+      .main-content { margin-left: 260px; padding: 20px; }
+    }
+  </style>
+
   <!-- CRITICAL MOBILE CSS - Inline to avoid caching issues -->
   <style id="critical-mobile">
     @media screen and (max-width: 768px) {
