@@ -10249,3 +10249,54 @@ body.dark .theme-toggle-header .material-icons {
         min-height: -webkit-fill-available !important;
     }
 }
+
+/* ============================================
+   EMERGENCY MOBILE FIXES
+   These styles ensure mobile layout works correctly
+   regardless of other CSS rules
+   ============================================ */
+@media screen and (max-width: 768px) {
+    html, body {
+        overflow-x: hidden !important;
+    }
+    
+    /* FORCE sidebar hidden on mobile */
+    #sidebar {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    
+    /* When sidebar is active (opened) */
+    #sidebar.active {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 260px !important;
+        height: 100vh !important;
+        z-index: 10000 !important;
+        background: var(--bg-secondary) !important;
+    }
+    
+    /* Mobile header MUST show */
+    #mobile-header {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    
+    /* Page shell margin for mobile header */
+    .page-shell {
+        margin-top: 70px !important;
+    }
+    
+    /* Main content adjustments */
+    .main-content {
+        margin-left: 0 !important;
+        padding: 12px !important;
+    }
+}
