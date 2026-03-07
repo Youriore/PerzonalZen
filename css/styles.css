@@ -10106,76 +10106,31 @@ body.dark .theme-toggle-header .material-icons {
     }
 }
 
-/* EMERGENCY MOBILE FIXES - Aggressive approach */
+/* MOBILE MINIMAL FIX - Absolute minimum styles for mobile */
 @media screen and (max-width: 767px) {
-    html, body {
-        overflow-x: hidden !important;
-        width: 100% !important;
-        max-width: 100% !important;
+    * {
+        box-sizing: border-box;
     }
     
-    /* FORCE sidebar hidden on mobile */
+    body {
+        overflow-x: hidden !important;
+    }
+    
+    /* Hide sidebar completely */
     #sidebar {
         display: none !important;
         visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        position: static !important;
-        height: auto !important;
     }
     
-    /* When sidebar is active (opened) */
-    #sidebar.active {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 260px !important;
-        height: 100vh !important;
-        z-index: 10000 !important;
-        background: var(--bg-secondary) !important;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
-    }
-    
-    /* Mobile header MUST show */
+    /* Show mobile header */
     #mobile-header {
         display: flex !important;
         visibility: visible !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
     }
     
-    /* Page shell margin for mobile header */
-    .page-shell {
-        margin-top: 70px !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-    }
-    
-    /* Main content adjustments */
+    /* Adjust main content */
     .main-content {
         margin-left: 0 !important;
         padding: 12px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    
-    /* Container adjustments */
-    .container {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    
-    /* Hide desktop header on mobile */
-    .app-header {
-        display: none !important;
     }
 }
