@@ -301,16 +301,17 @@ body.dark .page-shell {
 }
 
 @media (max-width: 768px) {
+
     /* Hide desktop elements */
     .app-container {
         display: block !important;
     }
-    
+
     /* Hide sidebar on mobile - FORCE HIDDEN */
     .sidebar {
         display: none !important;
     }
-    
+
     .sidebar.active {
         display: flex !important;
         position: fixed !important;
@@ -319,9 +320,9 @@ body.dark .page-shell {
         height: 100vh !important;
         z-index: 1000 !important;
         width: 260px !important;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15) !important;
     }
-    
+
     /* Show mobile header */
     #mobile-header {
         display: flex !important;
@@ -336,7 +337,7 @@ body.dark .page-shell {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         border-bottom: 1px solid var(--border);
     }
-    
+
     .sidebar-overlay {
         display: none;
         position: fixed;
@@ -344,14 +345,14 @@ body.dark .page-shell {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.5);
         z-index: 999;
     }
-    
+
     .sidebar-overlay.active {
         display: block;
     }
-    
+
     .main-content {
         margin-left: 0 !important;
         padding: 12px !important;
@@ -9626,7 +9627,7 @@ body.dark .theme-toggle-header .material-icons {
         font-size: 2.2rem;
         margin-bottom: 12px;
         display: block;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
     }
 
     .stat-card .stat-number {
@@ -10111,23 +10112,23 @@ body.dark .theme-toggle-header .material-icons {
     * {
         box-sizing: border-box;
     }
-    
+
     body {
         overflow-x: hidden !important;
     }
-    
+
     /* Hide sidebar completely */
     #sidebar {
         display: none !important;
         visibility: hidden !important;
     }
-    
+
     /* Show mobile header */
     #mobile-header {
         display: flex !important;
         visibility: visible !important;
     }
-    
+
     /* Adjust main content */
     .main-content {
         margin-left: 0 !important;
