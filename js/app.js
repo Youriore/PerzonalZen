@@ -706,32 +706,18 @@ function initMobileView() {
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     const mobileHeader = document.getElementById('mobile-header');
-    const appHeader = document.querySelector('.app-header');
     
     if (isMobile) {
-        // Force hide sidebar on mobile
+        // Ensure sidebar is hidden on mobile
         if (sidebar) {
-            sidebar.style.display = 'none';
             sidebar.classList.remove('active');
         }
         if (sidebarOverlay) {
             sidebarOverlay.classList.remove('active');
         }
-        // Force show mobile header
+        // Ensure mobile header is visible
         if (mobileHeader) {
             mobileHeader.style.display = 'flex';
-        }
-        // Hide desktop header
-        if (appHeader) {
-            appHeader.style.display = 'none';
-        }
-    } else {
-        // Desktop: show desktop header, hide mobile header
-        if (appHeader) {
-            appHeader.style.display = 'flex';
-        }
-        if (mobileHeader) {
-            mobileHeader.style.display = 'none';
         }
     }
 }

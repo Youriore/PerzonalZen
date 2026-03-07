@@ -1,4 +1,4 @@
-<!doctype html>
+ <!doctype html>
 <html lang="es">
 
 <head>
@@ -8,32 +8,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#1E293B" />
-  <meta name="format-detection" content="telephone=no" />
   <title>Zen Tasks - Gestión Completa</title>
-
-  <!-- Force mobile styles immediately -->
-  <style id="mobile-override">
-    @media screen and (max-width: 768px) {
-      #sidebar {
-        display: none !important;
-      }
-
-      #mobile-header {
-        display: flex !important;
-      }
-
-      .page-shell {
-        margin-top: 70px !important;
-      }
-    }
-  </style>
-
   <link rel="skip" href="#main-content" title="Saltar al contenido principal" />
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet" />
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <!-- Chart.js for Statistics -->
@@ -41,11 +22,11 @@
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
-</head>
+   </head>
 
-<body>
-  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
-  <div class="app-container">
+  <body>
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    <div class="app-container">
     <!-- Sidebar (Desktop - Fixed Position) -->
     <nav id="sidebar" class="sidebar">
       <div class="sidebar-header logo-container p-3">
@@ -170,7 +151,7 @@
     </header>
   </div>
 
-  <!-- Main Content Area -->
+   <!-- Main Content Area -->
   <main class="main-content" id="main-content">
     <div class="page-shell">
       <!-- Mobile Header (Simplified) -->
@@ -234,10 +215,9 @@
       <div class="card kanban-card">
         <div class="card-header">
           <div class="card-title">Tablero Kanban</div>
-          <div class="kanban-controls">
-            <div class="search-box">
-              <input type="text" placeholder="Buscar tareas..." id="kanbanSearch" oninput="filterKanban(this.value)"
-                aria-label="Buscar tareas" role="search" />
+           <div class="kanban-controls">
+             <div class="search-box">
+              <input type="text" placeholder="Buscar tareas..." id="kanbanSearch" oninput="filterKanban(this.value)" aria-label="Buscar tareas" role="search" />
             </div>
             <button class="btn-secondary" onclick="clearKanbanSearch()">
               Limpiar
@@ -325,10 +305,9 @@
         <div class="card tasks-card">
           <div class="card-header">
             <div class="card-title"><span>◑</span> Mis Tareas</div>
-            <div style="display: flex; gap: 8px">
-              <div class="search-box">
-                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)"
-                  aria-label="Buscar tareas" role="search" />
+             <div style="display: flex; gap: 8px">
+               <div class="search-box">
+                <input type="text" placeholder="Buscar tareas..." oninput="searchTasks(this.value)" aria-label="Buscar tareas" role="search" />
               </div>
             </div>
           </div>
@@ -720,13 +699,11 @@
             </button>
           </div>
           <div class="chart-controls">
-            <button class="btn-secondary chart-refresh-btn" onclick="refreshAllCharts()"
-              title="Actualizar todos los gráficos">
+            <button class="btn-secondary chart-refresh-btn" onclick="refreshAllCharts()" title="Actualizar todos los gráficos">
               <span class="refresh-icon">🔄</span>
               <span class="refresh-text">Actualizar</span>
             </button>
-            <button class="btn-secondary chart-export-all-btn" onclick="exportAllCharts()"
-              title="Exportar todos los gráficos">
+            <button class="btn-secondary chart-export-all-btn" onclick="exportAllCharts()" title="Exportar todos los gráficos">
               <span class="export-icon">📥</span>
               <span class="export-text">Exportar Todo</span>
             </button>
@@ -837,8 +814,7 @@
               <div class="chart-card full-width">
                 <div class="chart-header">
                   <h4>Registro de Actividad Reciente</h4>
-                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('recentTasksChart')">📥
-                    Exportar</button>
+                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('recentTasksChart')">📥 Exportar</button>
                 </div>
                 <canvas id="recentTasksChart"></canvas>
               </div>
@@ -847,16 +823,14 @@
               <div class="chart-card">
                 <div class="chart-header">
                   <h4>Productividad por Hora</h4>
-                  <button class="btn-secondary chart-export-btn"
-                    onclick="exportChartToImage('productivityByHourChart')">📥 Exportar</button>
+                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('productivityByHourChart')">📥 Exportar</button>
                 </div>
                 <canvas id="productivityByHourChart"></canvas>
               </div>
               <div class="chart-card">
                 <div class="chart-header">
                   <h4>Análisis de Pareto</h4>
-                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('paretoChart')">📥
-                    Exportar</button>
+                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('paretoChart')">📥 Exportar</button>
                 </div>
                 <canvas id="paretoChart"></canvas>
               </div>
@@ -865,8 +839,7 @@
               <div class="chart-card">
                 <div class="chart-header">
                   <h4>Tareas por Tiempo y Prioridad</h4>
-                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('bubbleChart')">📥
-                    Exportar</button>
+                  <button class="btn-secondary chart-export-btn" onclick="exportChartToImage('bubbleChart')">📥 Exportar</button>
                 </div>
                 <canvas id="bubbleChart"></canvas>
               </div>
@@ -902,16 +875,16 @@
       <p id="alarmMessage">La tarea ha terminado</p>
       <button class="alarm-btn" onclick="stopAlarm()">Detener Alarma</button>
     </div>
-  </div>
+   </div>
 
-  <div class="modal-overlay" id="settingsModalOverlay">
-    <div class="zen-modal">
-      <div class="modal-header">
-        <div class="modal-title">⚙ Configuración</div>
-        <button class="modal-close" onclick="closeSettingsModal()">×</button>
-      </div>
-      <div class="modal-body" style="padding: 0">
-        <div class="settings-container">
+    <div class="modal-overlay" id="settingsModalOverlay">
+     <div class="zen-modal">
+       <div class="modal-header">
+         <div class="modal-title">⚙ Configuración</div>
+         <button class="modal-close" onclick="closeSettingsModal()">×</button>
+       </div>
+       <div class="modal-body" style="padding: 0">
+         <div class="settings-container">
           <div class="settings-sidebar">
             <div class="settings-tab active" onclick="switchSettingsTab('general', this)">
               <span>⚡</span> General
@@ -997,18 +970,16 @@
               <div class="setting-item">
                 <div class="setting-label">🌅 Hora de inicio</div>
                 <div class="setting-description">
-                  Hora início de tu jornada laboral
-                </div>
-                <input type="time" id="tbStartTime" class="form-input" value="09:00" style="width: 150px"
-                  aria-label="Hora de inicio" />
+                   Hora início de tu jornada laboral
+                 </div>
+                <input type="time" id="tbStartTime" class="form-input" value="09:00" style="width: 150px" aria-label="Hora de inicio" />
               </div>
               <div class="setting-item">
                 <div class="setting-label">🌙 Hora de fin</div>
                 <div class="setting-description">
                   Hora fin de tu jornada laboral
                 </div>
-                <input type="time" id="tbEndTime" class="form-input" value="18:00" style="width: 150px"
-                  aria-label="Hora de fin" />
+                <input type="time" id="tbEndTime" class="form-input" value="18:00" style="width: 150px" aria-label="Hora de fin" />
               </div>
               <button class="btn-primary" onclick="saveTimeBlockingSettings()" style="margin-top: 16px">
                 Guardar
@@ -1034,10 +1005,9 @@
               <div class="setting-item">
                 <div class="setting-label">📥 Importar Datos</div>
                 <div class="setting-description">
-                  Restaura tus datos desde un archivo JSON
-                </div>
-                <input type="file" id="import-file" accept=".json" style="display: none" onchange="importData(this)"
-                  aria-label="Importar archivo JSON" />
+                   Restaura tus datos desde un archivo JSON
+                 </div>
+                <input type="file" id="import-file" accept=".json" style="display: none" onchange="importData(this)" aria-label="Importar archivo JSON" />
                 <button class="btn-secondary" onclick="document.getElementById('import-file').click()">
                   📤 Importar JSON
                 </button>
@@ -1082,7 +1052,7 @@
   <!-- Mobile Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
-  <!-- Notification -->
+   <!-- Notification -->
   <div class="notification" id="notification"></div>
 
   <!-- Toast Notifications Container -->
@@ -1092,4 +1062,4 @@
   <script src="js/kanban-enhancements.js"></script>
 </body>
 
-</html><!-- Force deploy -->
+</html>
