@@ -723,30 +723,6 @@ body.dark .page-shell {
     font-size: 0.85rem;
 }
 
-@keyframes pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.02);
-    }
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.02);
-    }
-}
-
 /* Voice Command Button */
 .voice-command-btn {
     display: flex;
@@ -3360,18 +3336,6 @@ body.dark .theme-toggle-header .material-icons {
     font-size: 0.85rem;
     color: var(--text-light);
     font-weight: 500;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.02);
-    }
 }
 
 .kanban-actions {

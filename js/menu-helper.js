@@ -1,7 +1,7 @@
 function closeOffcanvas() {
     const offcanvasElement = document.getElementById('offcanvasSidebar');
-    const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasElement);
-    if (offcanvasInstance) {
-        offcanvasInstance.hide();
+    if (offcanvasElement && offcanvasElement.classList.contains('show')) {
+        offcanvasElement.classList.remove('show');
+        document.body.classList.remove('sidebar-open');
     }
 }

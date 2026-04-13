@@ -3002,8 +3002,9 @@ function deleteTimeBlock(btn, dayIndex, blockId) {
     const blockEl = btn.closest('.tb-block');
     if (blockEl) blockEl.remove();
 
-    if (typeof timeBlockingData !== 'undefined' && timeBlockingData[dayIndex]) {
-        timeBlockingData[dayIndex] = timeBlockingData[dayIndex].filter(b => b.id !== blockId);
+    const blockData = timeBlocks.find(b => b.id === blockId);
+    if (blockData) {
+        timeBlocks = timeBlocks.filter(b => b.id !== blockId);
         saveTimeBlockingData();
     }
 }
