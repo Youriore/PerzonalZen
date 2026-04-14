@@ -703,28 +703,27 @@ let wakeLock = null;
 // Initialize mobile view on load
 function initMobileView() {
     const isMobile = window.innerWidth <= 768;
+    const body = document.body;
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const mobileHeader = document.getElementById('mobile-header');
     
+    // Use CSS classes instead of inline styles to avoid conflicts
     if (isMobile) {
-        // Ensure sidebar is hidden on mobile
-        if (sidebar) {
-            sidebar.classList.remove('active');
-        }
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.remove('active');
-        }
-        // Ensure mobile header is visible
-        if (mobileHeader) {
-            mobileHeader.style.display = 'flex';
-        }
+        body.classList.add('is-mobile');
+        body.classList.remove('is-desktop');
+        if (sidebar) sidebar.classList.remove('active');
+        if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+    } else {
+        body.classList.remove('is-mobile');
+        body.classList.add('is-desktop');
     }
 }
 
-// Handle window resize
+// Debounced resize handler
+let resizeTimer;
 window.addEventListener('resize', () => {
-    initMobileView();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(initMobileView, 100);
 });
 
 document.addEventListener('DOMContentLoaded', () => {

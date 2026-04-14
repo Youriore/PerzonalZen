@@ -300,64 +300,7 @@ body.dark .page-shell {
     }
 }
 
-@media (max-width: 768px) {
-    /* Hide desktop elements */
-    .app-container {
-        display: block !important;
-    }
-    
-    /* Hide sidebar on mobile - FORCE HIDDEN */
-    .sidebar {
-        display: none !important;
-    }
-    
-    .sidebar.active {
-        display: flex !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        height: 100vh !important;
-        z-index: 1000 !important;
-        width: 260px !important;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
-    }
-    
-    /* Show mobile header */
-    #mobile-header {
-        display: flex !important;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        background: var(--card);
-        height: 60px;
-        padding: 8px 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        border-bottom: 1px solid var(--border);
-    }
-    
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-    }
-    
-    .sidebar-overlay.active {
-        display: block;
-    }
-    
-    .main-content {
-        margin-left: 0 !important;
-        padding: 12px !important;
-        margin-top: 70px !important;
-    }
-}
+/* Base styles are handled by Critical CSS in index.html */
 
 /* App Container */
 .app-container {

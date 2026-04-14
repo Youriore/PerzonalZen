@@ -3,7 +3,103 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  
+  <!-- CRITICAL CSS: Mobile-first responsive styles -->
+  <style>
+    /* Reset and base for mobile */
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;background:#F8FAFC;color:#1E293B}
+    
+    /* Desktop layout (default) */
+    @media (min-width:769px){
+      .sidebar{position:fixed;left:0;top:0;width:260px;height:100vh;background:#F1F5F9;border-right:1px solid #E2E8F0;display:flex;flex-direction:column}
+      .main-content{margin-left:260px;padding:20px 24px}
+      #mobile-header{display:none!important}
+      .app-header{display:flex!important}
+    }
+    
+    /* Mobile layout */
+    @media (max-width:768px){
+      #sidebar{display:none!important}
+      #sidebar.active{display:flex!important;position:fixed;left:0;top:0;width:260px;height:100vh;z-index:1000;box-shadow:4px 0 20px rgba(0,0,0,0.15)}
+      #mobile-header{display:flex!important;position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;padding:8px 16px;border-bottom:1px solid #E2E8F0;height:60px;align-items:center;justify-content:space-between}
+      .app-header{display:none!important}
+      .main-content{margin-left:0!important;padding:12px;margin-top:70px}
+      .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999}
+      .sidebar-overlay.active{display:block}
+      
+      /* Dashboard mobile */
+      .dashboard-grid{display:flex;flex-direction:column;gap:16px}
+      .kanban-container{display:flex;overflow-x:auto;gap:12px;padding:0 12px 12px;-webkit-overflow-scrolling:touch}
+      .kanban-column{flex-shrink:0;width:85vw;max-width:280px;min-width:240px}
+      .habits-tasks-row{display:flex;flex-direction:column;gap:16px}
+      .habits-card,.tasks-card{width:100%}
+      .right-column{width:100%}
+      .page-shell{margin:0;padding:12px;border-radius:0}
+      
+      /* Cards mobile */
+      .card{border-radius:12px;margin-bottom:12px;overflow:hidden}
+      .card-header{padding:12px 16px}
+      .card-body{padding:12px 16px}
+      
+      /* FAB mobile */
+      .fab{width:50px;height:50px;font-size:1.5rem}
+      .fab.voice-fab{bottom:70px}
+      
+      /* Welcome section mobile */
+      .welcome-container{flex-direction:column;align-items:flex-start;padding:16px;border-radius:16px}
+      .welcome-text h2{font-size:1.5rem}
+      
+      /* Calendar mobile */
+      .calendar-full{overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .calendar-grid{min-width:300px}
+      .calendar-nav{flex-wrap:wrap;gap:8px}
+      .calendar-day-cell{width:40px;height:40px;font-size:0.8rem}
+      
+      /* Tasks list mobile */
+      .tasks-list{overflow-y:auto;max-height:60vh}
+      .task-item{flex-wrap:wrap;padding:12px}
+      .task-meta{font-size:0.75rem}
+      
+      /* Forms mobile */
+      input,select,textarea{padding:12px;font-size:16px!important}
+      .form-group{margin-bottom:16px}
+      .btn{padding:12px 20px;font-size:1rem}
+      
+      /* Modal mobile */
+      .zen-modal{width:95%;max-height:90vh;margin:5vh auto;border-radius:16px}
+      .modal-header{padding:16px}
+      .modal-body{padding:16px}
+      
+      /* Time Blocking mobile */
+      .tb-container{padding:8px}
+      .tb-header{flex-direction:column;gap:12px}
+      .tb-main{flex-direction:column}
+      .tb-sidebar{width:100%}
+      .tb-calendar-wrapper{overflow-x:auto}
+      .tb-day-header{min-width:45px;padding:8px 4px}
+      .tb-block{left:2px;right:2px;padding:4px;font-size:0.65rem}
+      
+      /* Pomodoro mobile */
+      .pomodoro-container{padding:16px}
+      .timer-display{font-size:4rem}
+      .pomodoro-stats{grid-template-columns:1fr 1fr}
+      .stats-grid{grid-template-columns:1fr 1fr}
+      
+      /* Schedule mobile */
+      .schedule-grid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .schedule-content{grid-template-columns:60px repeat(7,80px)}
+      
+      /* Stats mobile */
+      .stats-grid{grid-template-columns:1fr 1fr;gap:12px}
+      .chart-row{flex-direction:column}
+      .chart-card{width:100%}
+      
+      /* Hide non-essential elements on mobile */
+      .desktop-only{display:none!important}
+    }
+  </style>
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
