@@ -929,13 +929,37 @@ body.dark .theme-toggle-header .material-icons {
     align-items: center;
     gap: 16px;
     padding: 14px 20px;
-    color: #CBD5F5 !important;
+    color: inherit;
     text-decoration: none;
     font-weight: 500;
     font-size: 0.95rem;
     border-radius: 16px;
-    /* Pill shape */
     transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(5px);
+}
+
+.nav-link.active {
+    background: var(--accent);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.nav-link.active .material-icons {
+    color: inherit;
+}
+
+.nav-link .material-icons {
+    color: inherit;
+    transition: transform 0.2s ease;
+    text-shadow: none;
+    -webkit-text-fill-color: initial;
+}
+
+.nav-link:hover .material-icons {
+    transform: scale(1.1);
 }
 
 .nav-link:hover {
@@ -1013,7 +1037,7 @@ body.dark .theme-toggle-header .material-icons {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    color: #D1D5DB;
+    color: inherit;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 0.9rem;
@@ -1025,15 +1049,16 @@ body.dark .theme-toggle-header .material-icons {
 .sidebar-footer .theme-toggle:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
-    color: white;
     transform: translateX(4px);
 }
 
 .sidebar-footer .settings-btn .material-icons,
 .sidebar-footer .theme-toggle .material-icons {
     font-size: 1.2rem;
-    color: #9CA3AF;
+    color: inherit;
     transition: color 0.2s ease;
+    text-shadow: none;
+    -webkit-text-fill-color: initial;
 }
 
 .sidebar-footer .settings-btn:hover .material-icons,
