@@ -1,15 +1,22 @@
 {
   "headers": [
     {
+      "source": "/css/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/css/:path*", "destination": "/css/:path*" },
-    { "source": "/js/:path*", "destination": "/js/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
